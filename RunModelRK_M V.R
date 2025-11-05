@@ -331,45 +331,6 @@ ZZs <- prepZs(y)
 z_inits <- ZZs$z_inits
 z_dat <- ZZs$z_dat
 
-# z_inits <- y
-# z_dat <- y
-# z_inits[y == 999] <- NA
-# z_dat[y == 999] <- NA
-# 
-# # seen on-site -> alive on-site (1 -> 1)
-# z_inits[y == 1] <- NA
-# z_dat[y == 1] <- 1
-# 
-# # seen off-site -> alive off-site (2 -> 2)
-# z_inits[y == 2] <- NA
-# z_dat[y == 2] <- 2
-# 
-# # recovered roadkill -> dead by roadkill (3 -> 3)
-# z_inits[y == 3] <- NA
-# z_dat[y == 3] <- 3
-# 
-# # recovered other -> dead by other (4 -> 4)
-# z_inits[y == 4] <- NA
-# z_dat[y == 4] <- 4
-# 
-# # undetected -> alive (5 -> 1)? TO DISCUSS
-# z_inits[y == 5] <- 1
-# z_dat[y == 5] <- NA
-# 
-# # undetected after mortality observed -> long dead (5 -> 5)
-# n.inds <- nrow(y)
-# for (i in 1:n.inds) {
-#   tmp <- z_dat[i, ]
-#   if (any(tmp == 3, na.rm = T) | any(tmp == 4, na.rm = T)) {
-#     indexD <- min(which(tmp == 3 | tmp == 4)) # index of 3 or 4 (dead)
-#     indexLD <- (indexD + 1):length(tmp) # indices of 5 after 3|4 -> 5 (long dead)
-#     tmp[indexLD] <- 5
-#   }
-#   z_dat[i, ] <- tmp
-# }
-# 
-# z_inits[z_dat == 5] <- NA
-
 
 ## Assemble --------------------------------------------------------------------
 
@@ -481,28 +442,6 @@ if(parallelRun){
                                 "seedMod", "runChain"))
 }
 
-# # Without parallelization
-# # Compile configuration & build
-# Rmodel <- nimbleModel(code = code, constants = const, data = dat,
-#                       check = F, calculate = F, inits = inits)
-# conf <- configureMCMC(Rmodel, monitors = params, thin = nt, useConjugacy = F)
-# Rmcmc <- buildMCMC(conf) # take a look at sampler
-# 
-# Cmodel <- compileNimble(Rmodel, showCompilerOutput = F)
-# Cmcmc <- compileNimble(Rmcmc, project = Rmodel)
-# beep(sound = 2)
-# 
-# # Run MCMC
-# t.start <- Sys.time()
-# # sink("Results/errorreport.txt") # for debugging
-# # sink("errorreport.txt") # for debugging
-# out <- runMCMC(Cmcmc, niter = ni, nburnin = nb, nchains = nc, inits = inits,
-#                setSeed = F, progressBar = T, samplesAsCodaMCMC = T)
-# t.end <- Sys.time()
-# # sink() # closing txt file
-# (runTime <- t.end - t.start)
-# beep(sound = 2)
-
 if(parallelRun){
   # run chains in parallel
   start <- Sys.time()
@@ -548,11 +487,9 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-# mod <- readRDS(here("Results", "model1.rds")
-# mod_summary <- read.lines(here("Results", "model_summary.txt"))
-
-# Calculate numerical summaries
+out <- readRDS("results/modelF_varObs_ageVeg.rds")
 model.summary <- MCMCsummary(object = out, round = 3)
+model.summary
 
 # # Posterior predictive checks
 # set.seed(1)
@@ -563,7 +500,7 @@ model.summary <- MCMCsummary(object = out, round = 3)
 #   mean.R   <- par.row["mean.R"]
 #   mean.rR  <- par.row["mean.rR"]
 #   mean.rO  <- par.row["mean.rO"]
-#   
+# 
 #   tot.dead <- sum(y == 3 | y == 4, na.rm = T)
 #   sim.rR <- rbinom(1, tot.dead, mean.R * mean.rR / (mean.R * mean.rR + (1-mean.R) * mean.rO))
 #   return(c(sim.rR = sim.rR))
@@ -629,8 +566,4 @@ MCMCtrace(object = out,
 autocorr.diag(out)
 # autocorr.plot(out)
 coda::crosscorr.plot(out)
-
-# Scatterplot of variables
-color_scheme_set("purple")
-mcmc_scatter(out, pars = c("mu.pri", "mean.R"))
 

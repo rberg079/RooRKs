@@ -19,7 +19,9 @@ prepDataRK <- function(females = T){
   
   ## Load & clean up data ------------------------------------------------------
   
-  surv <- read_excel("PromSurvivalOct24.xlsx", sheet = "YEARLY SURV")
+  surv <- read_excel("data/PromSurvivalOct24.xlsx", sheet = "YEARLY SURV")
+  if(females){age <- read_csv("data/ageF.csv")}else{age <- read_csv("data/ageM.csv")}
+  env <- read_csv("data/Env_Mar25.csv")
   
   # modify column names to read as survived to s20XX
   surv <- surv %>%
@@ -199,12 +201,6 @@ prepDataRK <- function(females = T){
   # 
   # write_csv(age, "ageM.csv")
   
-  if(females){
-    age <- read_csv("ageF.csv") # females
-  }else{
-    age <- read_csv("ageM.csv") # males
-  }
-  
   age <- as.matrix(age)+1
   ageC <- c(0, rep(1,2), rep(2,4), rep(3,3), rep(4,30))+1
   remove(surv)
@@ -212,21 +208,29 @@ prepDataRK <- function(females = T){
   
   ## Environmental data --------------------------------------------------------
   
-  env <- read_csv("Env_Mar25.csv")
-  
   env <- env %>% 
     mutate(Year = ifelse(Month < 10, Year-1, Year)) %>% 
     group_by(Year) %>% 
     mutate(Veg = sum(Veg, na.rm = T),
-           Veg = ifelse(between(Year, 2009, 2023), Veg, NA)) %>%
-    distinct(Year, Veg) %>%
+           Dens = mean(Dens, na.rm = T),
+           Win = sum(Warn.18, na.rm = T),
+           Veg = ifelse(between(Year, 2009, 2023), Veg, NA),
+           Dens = ifelse(between(Year, 2008, 2024), Dens, NA),
+           Win = ifelse(between(Year, 2008, 2023), Win, NA)) %>%
+    distinct(Year, Veg, Dens, Win) %>%
+    mutate(VegRoo = Veg/Dens) %>% 
     ungroup()
   
-  env <- env[3:19,] # [2008:2024,]
-  veg <- round(as.numeric(scale(env$Veg)),3)
+  env  <- env[3:19,] # [2008:2024,]
+  veg  <- round(as.numeric(scale(env$Veg)), 3)
+  dens <- round(as.numeric(scale(env$Dens)), 3)
+  win  <- round(as.numeric(scale(env$Win)), 3)
+  vRoo <- round(as.numeric(scale(env$VegRoo)), 3)
   
-  noVeg <- which(is.na(veg))
-  nNoVeg <- length(noVeg)
+  noVeg  <- which(is.na(veg));  nNoVeg  <- length(noVeg)
+  noDens <- which(is.na(dens)); nNoDens <- length(noDens)
+  noWin  <- which(is.na(win));  nNoWin  <- length(noWin)
+  noVRoo <- which(is.na(vRoo)); nNoVRoo <- length(noVRoo)
   
   # write_csv(env, "env.csv")
   
