@@ -91,9 +91,11 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  # for (m in 1:nNoVeg){
-  #   veg[noVeg[m]] ~ dnorm(0, sd = 1)
+  # for (m in 1:nNoWin){
+  #   win[noWin[m]] ~ dnorm(0, sd = 1)
   # } # m
+  
+  win[noWin] ~ dnorm(0, sd = 1)
   
   
   ## SURVIVAL MODEL
@@ -107,11 +109,11 @@ myCode <- nimbleCode({
     eps.phi[4, t] ~ dnorm(0, tau.phi)
     eps.phi[5, t] ~ dnorm(0, tau.phi)
     
-    logit(phi.juv[t]) <- logit(mu.juv) + B.dens[1] * dens[t] + eps.phi[1, t]
-    logit(phi.sub[t]) <- logit(mu.sub) + B.dens[2] * dens[t] + eps.phi[2, t]
-    logit(phi.pri[t]) <- logit(mu.pri) + B.dens[3] * dens[t] + eps.phi[3, t]
-    logit(phi.pre[t]) <- logit(mu.pre) + B.dens[4] * dens[t] + eps.phi[4, t]
-    logit(phi.sen[t]) <- logit(mu.sen) + B.dens[5] * dens[t] + eps.phi[5, t]
+    logit(phi.juv[t]) <- logit(mu.juv) + B.win[1] * win[t] + eps.phi[1, t]
+    logit(phi.sub[t]) <- logit(mu.sub) + B.win[2] * win[t] + eps.phi[2, t]
+    logit(phi.pri[t]) <- logit(mu.pri) + B.win[3] * win[t] + eps.phi[3, t]
+    logit(phi.pre[t]) <- logit(mu.pre) + B.win[4] * win[t] + eps.phi[4, t]
+    logit(phi.sen[t]) <- logit(mu.sen) + B.win[5] * win[t] + eps.phi[5, t]
     
     mean.phi[1, t] <- phi.juv[t]
     mean.phi[2, t] <- phi.sub[t]
@@ -275,7 +277,7 @@ myCode <- nimbleCode({
   }
   
   for (a in 1:n.age){
-    B.dens[a] ~ dnorm(0, 1)
+    B.win[a] ~ dnorm(0, 1)
   }
   
   sigma.phi ~ dunif(0, 4)
@@ -348,7 +350,7 @@ myInits <- list(
   mean.Po   = rbeta(n.occasions, 4, 4),
   mean.rR   = rbeta(n.occasions, 4, 4),
   mean.rO   = rbeta(n.occasions, 4, 4),
-  B.dens    = rep(0, n.age),
+  B.win     = rep(0, n.age),
   eps.phi   = matrix(rnorm((n.occasions-1)*n.age, 0, 0.1),
                      ncol = (n.occasions-1), nrow = n.age),
   sigma.phi = runif(1, 0.5, 1.5)
@@ -361,7 +363,8 @@ myData <- list(y = y,
                age = age,
                ageC = ageC,
                # veg = veg,
-               dens = dens)
+               # dens = dens,
+               win = win)
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
@@ -370,7 +373,7 @@ myData <- list(y = y,
 
 params <- c("mu.juv", "mu.sub", "mu.pri", "mu.pre", "mu.sen",
             "mean.R", "mean.M", "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "B.dens", "sigma.phi")
+            "B.win", "sigma.phi", "win")
 
 # Constants
 myConst <- list(n.age = n.age,
@@ -378,9 +381,9 @@ myConst <- list(n.age = n.age,
                 n.occasions = n.occasions,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
-                first = first)
-                # noVeg = noVeg,
-                # nNoVeg = nNoVeg)
+                first = first,
+                noWin = noWin,
+                nNoWin = nNoWin)
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
@@ -482,13 +485,13 @@ if(parallelRun){
 MCMCdiag(out,
          dir = "./Results",
          save_object = T,
-         obj_name = "modelF_varObs_ageDens.rds",
-         file_name = "modelF_varObs_ageDens_summary.txt")
+         obj_name = "modelF_varObs_ageWin.rds",
+         file_name = "modelF_varObs_ageWin_summary.txt")
 
 
 ## Plots -----------------------------------------------------------------------
 
-out <- readRDS("results/modelF_varObs_ageDens.rds")
+out <- readRDS("results/modelF_varObs_ageWin.rds")
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
