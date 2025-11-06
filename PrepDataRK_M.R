@@ -218,19 +218,16 @@ prepDataRK <- function(females = T){
            Dens = ifelse(between(Year, 2008, 2024), Dens, NA),
            Win = ifelse(between(Year, 2008, 2023), Win, NA)) %>%
     distinct(Year, Veg, Dens, Win) %>%
-    mutate(VegRoo = Veg/Dens) %>% 
     ungroup()
   
   env  <- env[3:19,] # [2008:2024,]
   veg  <- round(as.numeric(scale(env$Veg)), 3)
   dens <- round(as.numeric(scale(env$Dens)), 3)
   win  <- round(as.numeric(scale(env$Win)), 3)
-  vRoo <- round(as.numeric(scale(env$VegRoo)), 3)
   
-  noVeg  <- which(is.na(veg));  nNoVeg  <- length(noVeg)
-  noDens <- which(is.na(dens)); nNoDens <- length(noDens)
-  noWin  <- which(is.na(win));  nNoWin  <- length(noWin)
-  noVRoo <- which(is.na(vRoo)); nNoVRoo <- length(noVRoo)
+  noVeg  <- c(as.numeric(which(is.na(veg))));  nNoVeg  <- length(noVeg)
+  noDens <- c(as.numeric(which(is.na(dens)))); nNoDens <- length(noDens)
+  noWin  <- c(as.numeric(which(is.na(win))));  nNoWin  <- length(noWin)
   
   # write_csv(env, "env.csv")
   
@@ -267,8 +264,14 @@ prepDataRK <- function(females = T){
     last = last,
     
     veg = veg,
+    dens = dens,
+    win = win,
     noVeg = noVeg,
+    noDens = noDens,
+    noWin = noWin,
     nNoVeg = nNoVeg,
+    nNoDens = nNoDens,
+    nNoWin = nNoWin,
     
     n.age = n.age,
     n.inds = n.inds,

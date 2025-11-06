@@ -107,11 +107,11 @@ myCode <- nimbleCode({
     eps.phi[4, t] ~ dnorm(0, tau.phi)
     eps.phi[5, t] ~ dnorm(0, tau.phi)
     
-    logit(phi.juv[t]) <- logit(mu.juv) + B.veg[1] * veg[t] + eps.phi[1, t]
-    logit(phi.sub[t]) <- logit(mu.sub) + B.veg[2] * veg[t] + eps.phi[2, t]
-    logit(phi.pri[t]) <- logit(mu.pri) + B.veg[3] * veg[t] + eps.phi[3, t]
-    logit(phi.pre[t]) <- logit(mu.pre) + B.veg[4] * veg[t] + eps.phi[4, t]
-    logit(phi.sen[t]) <- logit(mu.sen) + B.veg[5] * veg[t] + eps.phi[5, t]
+    logit(phi.juv[t]) <- logit(mu.juv) + B.veg[1] * (veg[t] / dens[t]) + eps.phi[1, t]
+    logit(phi.sub[t]) <- logit(mu.sub) + B.veg[2] * (veg[t] / dens[t]) + eps.phi[2, t]
+    logit(phi.pri[t]) <- logit(mu.pri) + B.veg[3] * (veg[t] / dens[t]) + eps.phi[3, t]
+    logit(phi.pre[t]) <- logit(mu.pre) + B.veg[4] * (veg[t] / dens[t]) + eps.phi[4, t]
+    logit(phi.sen[t]) <- logit(mu.sen) + B.veg[5] * (veg[t] / dens[t]) + eps.phi[5, t]
     
     mean.phi[1, t] <- phi.juv[t]
     mean.phi[2, t] <- phi.sub[t]
@@ -360,7 +360,8 @@ myData <- list(y = y,
                z = z_dat, 
                age = age,
                ageC = ageC,
-               veg = veg)
+               veg = veg,
+               dens = dens)
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
@@ -481,8 +482,8 @@ if(parallelRun){
 MCMCdiag(out,
          dir = "./Results",
          save_object = T,
-         obj_name = "modelF_varObs_ageVeg.rds",
-         file_name = "modelF_varObs_ageVeg_summary.txt")
+         obj_name = "modelF_varObs_ageVRoo.rds",
+         file_name = "modelF_varObs_ageVRoo_summary.txt")
 
 
 ## Plots -----------------------------------------------------------------------
