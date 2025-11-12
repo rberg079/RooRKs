@@ -2,10 +2,6 @@
 # Attempt to add age-specific environmental effects
 # & perhaps age-specific random year effects
 
-library(readxl)
-library(tidyverse)
-library(lubridate)
-
 
 ## Set up ----------------------------------------------------------------------
 
@@ -15,30 +11,47 @@ testRun <- FALSE
 parallelRun <- FALSE
 
 # load libraries
-library(forcats)
-library(nimble)
-library(here)
-library(coda)
-library(beepr)
-library(cowplot)
-library(patchwork)
-library(RColorBrewer)
 library(bayesplot)
-library(tidybayes)
+library(beepr)
+library(coda)
+library(cowplot)
+library(forcats)
 library(ggdist)
-library(postpack)
-library(strex)
+library(here)
+library(lubridate)
 library(MCMCvis)
+library(nimble)
+library(patchwork)
+library(postpack)
+library(RColorBrewer)
+library(readxl)
+library(strex)
+library(tidybayes)
+library(tidyverse)
 
-# load data
-source("PrepDataRK_M.R")
-dataRK <- prepDataRK(females = females)
-list2env(dataRK, envir = .GlobalEnv)
+# # load data
+# source("PrepDataRK_M.R")
+# dataRK <- prepDataRK(females = females)
+# list2env(dataRK, envir = .GlobalEnv)
 
 # # or...
 # eh <- read_csv("eh.csv")
 # age <- read_csv("age.csv")
 # env <- read_csv("env.csv")
+
+# or... fetch simulated data
+source("SimDataRK.R")
+dataRK <- simulateDataRK(mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8),
+                         B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4),
+                         sigma.phi = 0.2,
+                         mean.R = 0.05,
+                         mean.M = 0.05,
+                         mean.Pi = NULL,
+                         mean.Po = NULL,
+                         mean.rR = NULL,
+                         mean.rO = NULL,
+                         seed = 123)
+list2env(dataRK, envir = .GlobalEnv)
 
 
 ## Raw data checks -------------------------------------------------------------
@@ -95,7 +108,7 @@ myCode <- nimbleCode({
   #   win[noWin[m]] ~ dnorm(0, sd = 1)
   # } # m
   
-  win[noWin] ~ dnorm(0, sd = 1)
+  # win[noWin] ~ dnorm(0, sd = 1)
   
   
   ## SURVIVAL MODEL
@@ -109,11 +122,11 @@ myCode <- nimbleCode({
     eps.phi[4, t] ~ dnorm(0, tau.phi)
     eps.phi[5, t] ~ dnorm(0, tau.phi)
     
-    logit(phi.juv[t]) <- logit(mu.juv) + B.win[1] * win[t] + eps.phi[1, t]
-    logit(phi.sub[t]) <- logit(mu.sub) + B.win[2] * win[t] + eps.phi[2, t]
-    logit(phi.pri[t]) <- logit(mu.pri) + B.win[3] * win[t] + eps.phi[3, t]
-    logit(phi.pre[t]) <- logit(mu.pre) + B.win[4] * win[t] + eps.phi[4, t]
-    logit(phi.sen[t]) <- logit(mu.sen) + B.win[5] * win[t] + eps.phi[5, t]
+    logit(phi.juv[t]) <- logit(mu.juv) + B.veg[1] * veg[t] + eps.phi[1, t]
+    logit(phi.sub[t]) <- logit(mu.sub) + B.veg[2] * veg[t] + eps.phi[2, t]
+    logit(phi.pri[t]) <- logit(mu.pri) + B.veg[3] * veg[t] + eps.phi[3, t]
+    logit(phi.pre[t]) <- logit(mu.pre) + B.veg[4] * veg[t] + eps.phi[4, t]
+    logit(phi.sen[t]) <- logit(mu.sen) + B.veg[5] * veg[t] + eps.phi[5, t]
     
     mean.phi[1, t] <- phi.juv[t]
     mean.phi[2, t] <- phi.sub[t]
@@ -306,11 +319,11 @@ prepZs <- function(y){
   z_dat[y == 999]   <- NA
   
   # Observed states -> deterministic transitions
-  z_inits[y == 1] <- NA; z_dat[y == 1] <- 1 # alive on-site
-  z_inits[y == 2] <- NA; z_dat[y == 2] <- 2 # alive off-site
-  z_inits[y == 3] <- NA; z_dat[y == 3] <- 3 # dead by roadkill
-  z_inits[y == 4] <- NA; z_dat[y == 4] <- 4 # dead by other cause
-  z_inits[y == 5] <- 1; z_dat[y == 5] <- NA # undetected (alive)
+  z_inits[y == 1] <- NA; z_dat[y == 1] <- 1  # alive on-site
+  z_inits[y == 2] <- NA; z_dat[y == 2] <- 2  # alive off-site
+  z_inits[y == 3] <- NA; z_dat[y == 3] <- 3  # dead by roadkill
+  z_inits[y == 4] <- NA; z_dat[y == 4] <- 4  # dead by other cause
+  z_inits[y == 5] <- 1 ; z_dat[y == 5] <- NA # undetected (alive)
   
   # Undetected after mortality -> long dead (5)
   n.inds <- nrow(y)
@@ -318,8 +331,10 @@ prepZs <- function(y){
     tmp <- z_dat[i, ]
     if (any(tmp == 3, na.rm = T) | any(tmp == 4, na.rm = T)) {
       indexD <- min(which(tmp == 3 | tmp == 4)) # index of 3 or 4 (dead)
-      indexLD <- (indexD + 1):length(tmp) # 5 after 3|4 -> 5 (long dead)
-      tmp[indexLD] <- 5
+      if(indexD < length(tmp)){ # safety in case roos die in last occasion
+        indexLD <- (indexD + 1):length(tmp) # 5 after 3|4 -> 5 (long dead)
+        tmp[indexLD] <- 5
+      }
     }
     z_dat[i, ] <- tmp
   }
@@ -362,9 +377,9 @@ myData <- list(y = y,
                z = z_dat, 
                age = age,
                ageC = ageC,
-               # veg = veg,
+               veg = veg)
                # dens = dens,
-               win = win)
+               # win = win)
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
@@ -373,7 +388,7 @@ myData <- list(y = y,
 
 params <- c("mu.juv", "mu.sub", "mu.pri", "mu.pre", "mu.sen",
             "mean.R", "mean.M", "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "B.win", "sigma.phi", "win")
+            "B.veg", "sigma.phi", "veg")
 
 # Constants
 myConst <- list(n.age = n.age,
@@ -381,9 +396,9 @@ myConst <- list(n.age = n.age,
                 n.occasions = n.occasions,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
-                first = first,
-                noWin = noWin,
-                nNoWin = nNoWin)
+                first = first)
+                # noVeg = noVeg,
+                # nNoVeg = nNoVeg)
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
