@@ -500,8 +500,8 @@ if(parallelRun){
 MCMCdiag(out,
          dir = "./Results",
          save_object = T,
-         obj_name = "modelF_varObs_ageWin.rds",
-         file_name = "modelF_varObs_ageWin_summary.txt")
+         obj_name = "modelF_varObs_ageVeg_simData.rds",
+         file_name = "modelF_varObs_ageVeg_simData_summary.txt")
 
 
 ## Plots -----------------------------------------------------------------------

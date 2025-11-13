@@ -46,9 +46,9 @@ simulateDataRK <- function(n.age = 20,
   # 
   # n.age = 20
   # n.ageC = 5
-  # n.occasions = 18
-  # n.inds = n.age * n.occasions
-  # first = rep(1:n.occasions, each = n.age)
+  # n.occasions = 20
+  # n.inds = n.age * (n.occasions-1)
+  # first = rep(1:(n.occasions-1), each = n.age)
   # mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8)
   # B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4)
   # mean.veg = 0
@@ -63,14 +63,14 @@ simulateDataRK <- function(n.age = 20,
   # seed = 42
   
   set.seed(seed)
-  n.inds = n.age * n.occasions
+  n.inds = n.age * (n.occasions-1)
   
   if(is.null(mean.Pi)) mean.Pi <- plogis(rnorm(n.occasions, qlogis(0.6), 0.2))
   if(is.null(mean.Po)) mean.Po <- plogis(rnorm(n.occasions, qlogis(0.4), 0.2))
   if(is.null(mean.rR)) mean.rR <- plogis(rnorm(n.occasions, qlogis(0.6), 0.2))
   if(is.null(mean.rO)) mean.rO <- plogis(rnorm(n.occasions, qlogis(0.4), 0.2))
   
-  if(is.null(first)) first <- rep(1:n.occasions, each = n.age)
+  if(is.null(first)) first <- rep(1:(n.occasions-1), each = n.age)
   
   # simulate standard normal veg
   veg <- rnorm(n.occasions - 1, mean = mean.veg, sd = sd.veg)
