@@ -39,28 +39,28 @@ simulateDataRK <- function(n.age = 20,
                            mean.rO = NULL,
                            seed = 42){
   
-  # # for testing purposes
-  # library(dplyr)
-  # library(purrr)
-  # library(tidyr)
-  # 
-  # n.age = 20
-  # n.ageC = 5
-  # n.occasions = 20
-  # n.inds = n.age * (n.occasions-1)
-  # first = rep(1:(n.occasions-1), each = n.age)
-  # mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8)
-  # B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4)
-  # mean.veg = 0
-  # sd.veg = 1
-  # sigma.phi = 0.2
-  # mean.R = 0.05
-  # mean.M = 0.05
-  # mean.Pi = NULL
-  # mean.Po = NULL
-  # mean.rR = NULL
-  # mean.rO = NULL
-  # seed = 42
+  # for testing purposes
+  library(dplyr)
+  library(purrr)
+  library(tidyr)
+
+  n.age = 20
+  n.ageC = 5
+  n.occasions = 20
+  n.inds = n.age * (n.occasions-1)
+  first = rep(1:(n.occasions-1), each = n.age)
+  mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8)
+  B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4)
+  mean.veg = 0
+  sd.veg = 1
+  sigma.phi = 0.2
+  mean.R = 0.05
+  mean.M = 0.05
+  mean.Pi = NULL
+  mean.Po = NULL
+  mean.rR = NULL
+  mean.rO = NULL
+  seed = 42
   
   set.seed(seed)
   n.inds = n.age * (n.occasions-1)
@@ -132,7 +132,7 @@ simulateDataRK <- function(n.age = 20,
       p[3] <- (1-phi) * R
       p[4] <- (1-phi) * (1-R)
       p[5] <- 0
-    } else if(z.prev == 2){ 
+    }else if(z.prev == 2){ 
       # if z.prev is 2,
       # take transition probabilities for state 2
       p[1] <- phi * M
@@ -140,16 +140,17 @@ simulateDataRK <- function(n.age = 20,
       p[3] <- (1-phi) * R
       p[4] <- (1-phi) * (1-R)
       p[5] <- 0
-    } else if(z.prev %in% c(3,4,5)){ 
+    }else if(z.prev %in% c(3,4,5)){ 
       # if z.prev is 3, 4, or 5,
       # only possible transition is to state 5
       p <- c(0,0,0,0,1)
     }
-    # # numerical safety
-    # if(sum(p) <= 0){
-    #   p <- p + 1e-12
-    # }
+    # numerical safety
+    if(sum(p) <= 0){
+      p <- p + 1e-12
+    }
     p <- p / sum(p)
+    # sample z according to p
     sample(1:5, size = 1, prob = p)
   }
   

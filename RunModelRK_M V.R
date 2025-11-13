@@ -289,8 +289,8 @@ myCode <- nimbleCode({
     mean.rO[t]  ~ dbeta(4, 4) # even fixing at 0.5 does not affect other params
   }
   
-  for (a in 1:n.age){
-    B.win[a] ~ dnorm(0, 1)
+  for (a in 1:n.ageC){
+    B.veg[a] ~ dnorm(0, 1)
   }
   
   sigma.phi ~ dunif(0, 4)
@@ -365,9 +365,9 @@ myInits <- list(
   mean.Po   = rbeta(n.occasions, 4, 4),
   mean.rR   = rbeta(n.occasions, 4, 4),
   mean.rO   = rbeta(n.occasions, 4, 4),
-  B.win     = rep(0, n.age),
-  eps.phi   = matrix(rnorm((n.occasions-1)*n.age, 0, 0.1),
-                     ncol = (n.occasions-1), nrow = n.age),
+  B.veg     = rep(0, n.ageC),
+  eps.phi   = matrix(rnorm((n.occasions-1)*n.ageC, 0, 0.1),
+                     ncol = (n.occasions-1), nrow = n.ageC),
   sigma.phi = runif(1, 0.5, 1.5)
 )
 
@@ -391,8 +391,8 @@ params <- c("mu.juv", "mu.sub", "mu.pri", "mu.pre", "mu.sen",
             "B.veg", "sigma.phi", "veg")
 
 # Constants
-myConst <- list(n.age = n.age,
-                n.inds = n.inds,
+myConst <- list(n.inds = n.inds,
+                n.ageC = n.ageC,
                 n.occasions = n.occasions,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
