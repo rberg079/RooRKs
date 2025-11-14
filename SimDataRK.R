@@ -39,28 +39,28 @@ simulateDataRK <- function(n.age = 20,
                            mean.rO = NULL,
                            seed = 42){
   
-  # for testing purposes
-  library(dplyr)
-  library(purrr)
-  library(tidyr)
-
-  n.age = 20
-  n.ageC = 5
-  n.occasions = 20
-  n.inds = n.age * (n.occasions-1)
-  first = rep(1:(n.occasions-1), each = n.age)
-  mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8)
-  B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4)
-  mean.veg = 0
-  sd.veg = 1
-  sigma.phi = 0.2
-  mean.R = 0.05
-  mean.M = 0.05
-  mean.Pi = NULL
-  mean.Po = NULL
-  mean.rR = NULL
-  mean.rO = NULL
-  seed = 42
+  # # for testing purposes
+  # library(dplyr)
+  # library(purrr)
+  # library(tidyr)
+  # 
+  # n.age = 20
+  # n.ageC = 5
+  # n.occasions = 20
+  # n.inds = n.age * (n.occasions-1)
+  # first = rep(1:(n.occasions-1), each = n.age)
+  # mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8)
+  # B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4)
+  # mean.veg = 0
+  # sd.veg = 1
+  # sigma.phi = 0.2
+  # mean.R = 0.05
+  # mean.M = 0.05
+  # mean.Pi = NULL
+  # mean.Po = NULL
+  # mean.rR = NULL
+  # mean.rO = NULL
+  # seed = 42
   
   set.seed(seed)
   n.inds = n.age * (n.occasions-1)
@@ -233,9 +233,9 @@ simulateDataRK <- function(n.age = 20,
     mean.rO = mean.rO,
     mean.R = mean.R,
     mean.M = mean.M,
-    params = list(B.veg = B.veg,
-                  mu.age = mu.age,
-                  sigma.phi = sigma.phi)
+    simParams = list(B.veg = B.veg,
+                     mu.age = mu.age,
+                     sigma.phi = sigma.phi)
   )
   return(out)
 }

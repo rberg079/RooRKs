@@ -41,11 +41,11 @@ library(tidyverse)
 
 # or... fetch simulated data
 source("SimDataRK.R")
-dataRK <- simulateDataRK(mu.age = c(0.7, 0.85, 0.9, 0.9, 0.8),
-                         B.veg = c(0.6, 0.4, 0.2, 0.2, 0.4),
-                         sigma.phi = 0.2,
-                         mean.R = 0.05,
-                         mean.M = 0.05,
+dataRK <- simulateDataRK(mu.age = c(0.4, 0.6, 0.6, 0.6, 0.4),
+                         B.veg = c(1, 0.8, 0.6, 0.6, 1),
+                         sigma.phi = 1,
+                         mean.R = 0.1,
+                         mean.M = 0.1,
                          mean.Pi = NULL,
                          mean.Po = NULL,
                          mean.rR = NULL,
@@ -500,13 +500,13 @@ if(parallelRun){
 MCMCdiag(out,
          dir = "./Results",
          save_object = T,
-         obj_name = "modelF_varObs_ageVeg_simData.rds",
-         file_name = "modelF_varObs_ageVeg_simData_summary.txt")
+         obj_name = "modelF_varObs_ageVeg_simData2.rds",
+         file_name = "modelF_varObs_ageVeg_simData_summary2.txt")
 
 
 ## Plots -----------------------------------------------------------------------
 
-out <- readRDS("results/modelF_varObs_ageWin.rds")
+out <- readRDS("results/modelF_varObs_ageVeg_simData2.rds")
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
