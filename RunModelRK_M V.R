@@ -6,7 +6,7 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- TRUE
+females <- FALSE
 testRun <- FALSE
 parallelRun <- FALSE
 
@@ -29,29 +29,29 @@ library(strex)
 library(tidybayes)
 library(tidyverse)
 
-# # load data
-# source("PrepDataRK_M.R")
-# dataRK <- prepDataRK(females = females)
-# list2env(dataRK, envir = .GlobalEnv)
+# load data
+source("PrepDataRK_M.R")
+dataRK <- prepDataRK(females = females)
+list2env(dataRK, envir = .GlobalEnv)
 
 # # or...
 # eh <- read_csv("eh.csv")
 # age <- read_csv("age.csv")
 # env <- read_csv("env.csv")
 
-# or... fetch simulated data
-source("SimDataRK.R")
-dataRK <- simulateDataRK(mu.age = c(0.4, 0.6, 0.6, 0.6, 0.4),
-                         B.veg = c(1, 0.8, 0.6, 0.6, 1),
-                         sigma.phi = 1,
-                         mean.R = 0.1,
-                         mean.M = 0.1,
-                         mean.Pi = NULL,
-                         mean.Po = NULL,
-                         mean.rR = NULL,
-                         mean.rO = NULL,
-                         seed = 123)
-list2env(dataRK, envir = .GlobalEnv)
+# # or... fetch simulated data
+# source("SimDataRK.R")
+# dataRK <- simulateDataRK(mu.age = c(0.4, 0.6, 0.6, 0.6, 0.4),
+#                          B.veg = c(1, 0.8, 0.6, 0.6, 1),
+#                          sigma.phi = 1,
+#                          mean.R = 0.1,
+#                          mean.M = 0.1,
+#                          mean.Pi = NULL,
+#                          mean.Po = NULL,
+#                          mean.rR = NULL,
+#                          mean.rO = NULL,
+#                          seed = 123)
+# list2env(dataRK, envir = .GlobalEnv)
 
 
 ## Raw data checks -------------------------------------------------------------
@@ -104,10 +104,10 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  # for (m in 1:nNoWin){
-  #   win[noWin[m]] ~ dnorm(0, sd = 1)
-  # } # m
-  
+  for (m in 1:nNoVeg){
+    veg[noVeg[m]] ~ dnorm(0, sd = 1)
+  } # m
+
   # win[noWin] ~ dnorm(0, sd = 1)
   
   
@@ -396,9 +396,9 @@ myConst <- list(n.inds = n.inds,
                 n.occasions = n.occasions,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
-                first = first)
-                # noVeg = noVeg,
-                # nNoVeg = nNoVeg)
+                first = first,
+                noVeg = noVeg,
+                nNoVeg = nNoVeg)
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
@@ -500,13 +500,13 @@ if(parallelRun){
 MCMCdiag(out,
          dir = "./Results",
          save_object = T,
-         obj_name = "modelF_varObs_ageVeg_simData2.rds",
-         file_name = "modelF_varObs_ageVeg_simData_summary2.txt")
+         obj_name = "modelM_varObs_ageVeg.rds",
+         file_name = "modelM_varObs_ageVeg_summary.txt")
 
 
 ## Plots -----------------------------------------------------------------------
 
-out <- readRDS("results/modelF_varObs_ageVeg_simData2.rds")
+out <- readRDS("results/modelF_varObs_ageVeg.rds")
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 

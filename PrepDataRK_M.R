@@ -237,7 +237,7 @@ prepDataRK <- function(females = T){
   y <- eh[,-1] %>% as.matrix() %>% unname()
   
   n.inds <- nrow(id)
-  n.age <- max(ageC)
+  n.ageC <- max(ageC)
   n.occasions <- ncol(y)
   n.obs.states <- 5
   n.true.states <- 5
@@ -273,8 +273,8 @@ prepDataRK <- function(females = T){
     nNoDens = nNoDens,
     nNoWin = nNoWin,
     
-    n.age = n.age,
     n.inds = n.inds,
+    n.ageC = n.ageC,
     n.occasions = n.occasions,
     n.obs.states = n.obs.states,
     n.true.states = n.true.states,
