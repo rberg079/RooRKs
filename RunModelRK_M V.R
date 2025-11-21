@@ -11,8 +11,8 @@ testRun <- FALSE
 parallelRun <- FALSE
 
 # name outputs
-out.model <- "modelF_varObs_ageVeg_ageMR.rds"
-out.summary <- "modelF_varObs_ageVeg_ageMR_summary.txt"
+out.model <- "modelF_varObs_ageVeg_ageMR2.rds"
+out.summary <- "modelF_varObs_ageVeg_ageMR2_summary.txt"
 
 # load libraries
 library(bayesplot)
@@ -119,25 +119,48 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   # logit-linear function of time-dependent covariates
-  for (t in 1:(n.occasions-1)){
-    eps.phi[1, t] ~ dnorm(0, tau.phi)
-    eps.phi[2, t] ~ dnorm(0, tau.phi)
-    eps.phi[3, t] ~ dnorm(0, tau.phi)
-    eps.phi[4, t] ~ dnorm(0, tau.phi)
-    eps.phi[5, t] ~ dnorm(0, tau.phi)
-    
-    logit(phi.juv[t]) <- logit(mu.juv) + B.veg[1] * veg[t] + eps.phi[1, t]
-    logit(phi.sub[t]) <- logit(mu.sub) + B.veg[2] * veg[t] + eps.phi[2, t]
-    logit(phi.pri[t]) <- logit(mu.pri) + B.veg[3] * veg[t] + eps.phi[3, t]
-    logit(phi.pre[t]) <- logit(mu.pre) + B.veg[4] * veg[t] + eps.phi[4, t]
-    logit(phi.sen[t]) <- logit(mu.sen) + B.veg[5] * veg[t] + eps.phi[5, t]
-    
-    mean.phi[1, t] <- phi.juv[t]
-    mean.phi[2, t] <- phi.sub[t]
-    mean.phi[3, t] <- phi.pri[t]
-    mean.phi[4, t] <- phi.pre[t]
-    mean.phi[5, t] <- phi.sen[t]
-  } # t
+  # for (t in 1:(n.occasions-1)){
+  #   eps.phi[1, t] ~ dnorm(0, tau.phi)
+  #   eps.phi[2, t] ~ dnorm(0, tau.phi)
+  #   eps.phi[3, t] ~ dnorm(0, tau.phi)
+  #   eps.phi[4, t] ~ dnorm(0, tau.phi)
+  #   eps.phi[5, t] ~ dnorm(0, tau.phi)
+  #   
+  #   logit(phi.juv[t]) <- logit(mu.juv) + B.veg[1] * veg[t] + eps.phi[1, t]
+  #   logit(phi.sub[t]) <- logit(mu.sub) + B.veg[2] * veg[t] + eps.phi[2, t]
+  #   logit(phi.pri[t]) <- logit(mu.pri) + B.veg[3] * veg[t] + eps.phi[3, t]
+  #   logit(phi.pre[t]) <- logit(mu.pre) + B.veg[4] * veg[t] + eps.phi[4, t]
+  #   logit(phi.sen[t]) <- logit(mu.sen) + B.veg[5] * veg[t] + eps.phi[5, t]
+  #   
+  #   mean.phi[1, t] <- phi.juv[t]
+  #   mean.phi[2, t] <- phi.sub[t]
+  #   mean.phi[3, t] <- phi.pri[t]
+  #   mean.phi[4, t] <- phi.pre[t]
+  #   mean.phi[5, t] <- phi.sen[t]
+  # } # t
+  
+  for (a in 1:n.ageC){
+    for (t in 1:(n.occasions-1)){
+      eps.phi[a, t] ~ dnorm(0, tau.phi)
+      
+      logit(mean.phi[a, t]) <- logit(mu.phi[a]) + B.veg[a] * veg[t] + eps.phi[a, t]
+      
+    } # t
+  } # a
+  
+  
+  # ## MIGRATION & ROADKILL MODELS
+  # ## ------------------------------------------------------------
+  # 
+  # for (a in 1:n.ageC){
+  #   for (t in 1:(n.occasions - 1)){
+  #     eps.M[a, t] ~ dnorm(0, tau.M)
+  #     eps.R[a, t] ~ dnorm(0, tau.R)
+  #     
+  #     logit(mean.M[a, t]) <- logit(mu.M[a]) + eps.M[a, t]
+  #     logit(mean.R[a, t]) <- logit(mu.R[a]) + eps.R[a, t]
+  #   } # t
+  # } # a
   
   
   ## LIKELIHOOD
@@ -277,13 +300,17 @@ myCode <- nimbleCode({
   # hist(rbeta(1000, 1, 8))
   # hist(rbeta(1000, 1, 1))
   
-  mu.juv ~ dbeta(4, 4)
-  mu.sub ~ dbeta(8, 2)
-  mu.pri ~ dbeta(8, 2)
-  mu.pre ~ dbeta(8, 2)
-  mu.sen ~ dbeta(4, 4)
+  # mu.phi[1] ~ dbeta(4, 4)
+  # mu.phi[2] ~ dbeta(8, 2)
+  # mu.phi[3] ~ dbeta(8, 2)
+  # mu.phi[4] ~ dbeta(8, 2)
+  # mu.phi[5] ~ dbeta(4, 4)
   
   for (a in 1:n.ageC) {
+    mu.phi[a] ~ dbeta(4, 4)
+    # mu.M[a]   ~ dbeta(1, 8)
+    # mu.R[a]   ~ dbeta(1, 8)
+    
     mean.M[a] ~ dbeta(1, 8)
     mean.R[a] ~ dbeta(1, 8)
   }
@@ -301,6 +328,11 @@ myCode <- nimbleCode({
   
   sigma.phi ~ dunif(0, 4)
   tau.phi <- 1 / (sigma.phi * sigma.phi)
+  
+  # sigma.M ~ dunif(0, 4)
+  # sigma.R ~ dunif(0, 4)
+  # tau.M <- 1 / (sigma.M * sigma.M)
+  # tau.R <- 1 / (sigma.R * sigma.R)
   
 }) # nimbleCode
 
@@ -360,11 +392,7 @@ z_dat <- ZZs$z_dat
 # Inits
 myInits <- list(
   z         = z_inits,
-  mu.juv    = rbeta(1, 4, 4),
-  mu.sub    = rbeta(1, 8, 2),
-  mu.pri    = rbeta(1, 8, 2),
-  mu.pre    = rbeta(1, 8, 2),
-  mu.sen    = rbeta(1, 4, 4),
+  mu.phi    = rbeta(n.ageC, 4, 4),
   mean.R    = rbeta(n.ageC, 1, 8),
   mean.M    = rbeta(n.ageC, 1, 8),
   mean.Pi   = rbeta(n.occasions, 8, 2),
@@ -392,8 +420,9 @@ myData <- list(y = y,
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("mu.juv", "mu.sub", "mu.pri", "mu.pre", "mu.sen",
-            "mean.R", "mean.M", "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
+params <- c("mu.phi",
+            "mean.R", "mean.M",
+            "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
             "B.veg", "sigma.phi", "veg")
 
 # Constants
