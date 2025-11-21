@@ -6,9 +6,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- FALSE
+females <- TRUE
 testRun <- FALSE
 parallelRun <- FALSE
+
+# name outputs
+out.model <- "modelF_varObs_ageVeg_ageMR.rds"
+out.summary <- "modelF_varObs_ageVeg_ageMR_summary.txt"
 
 # load libraries
 library(bayesplot)
@@ -157,8 +161,8 @@ myCode <- nimbleCode({
     for (t in first[i]:(n.occasions-1)){
       
       phi[i,t] <- mean.phi[ageC[age[i,t]], t] # survival
-      R[i,t]   <- mean.R # mortality by roadkill
-      M[i,t]   <- mean.M # migration (in or out)
+      R[i,t]   <- mean.R[ageC[age[i,t]]]      # mortality by roadkill by age class
+      M[i,t]   <- mean.M[ageC[age[i,t]]]      # migration (in or out) by age class
       
       #### Transition matrix ####
       # 1 - alive on-site
@@ -212,10 +216,10 @@ myCode <- nimbleCode({
   for (i in 1:n.inds){
     for (t in (first[i]+1):n.occasions){
       
-      Pi[i,t]  <- mean.Pi[t]  # probability of observation, on-site
-      Po[i,t]  <- mean.Po[t]  # probability of observation, off-site
-      rR[i,t]  <- mean.rR[t]  # probability of recovery, roadkill
-      rO[i,t]  <- mean.rO[t]  # probability of recovery, natural death
+      Pi[i,t] <- mean.Pi[t]  # probability of observation, on-site
+      Po[i,t] <- mean.Po[t]  # probability of observation, off-site
+      rR[i,t] <- mean.rR[t]  # probability of recovery, roadkill
+      rO[i,t] <- mean.rO[t]  # probability of recovery, natural death
       
       #### Observation matrix ####
       # 1 - seen on-site
@@ -279,14 +283,16 @@ myCode <- nimbleCode({
   mu.pre ~ dbeta(8, 2)
   mu.sen ~ dbeta(4, 4)
   
-  mean.R ~ dbeta(1, 8) 
-  mean.M ~ dbeta(1, 8) 
+  for (a in 1:n.ageC) {
+    mean.M[a] ~ dbeta(1, 8)
+    mean.R[a] ~ dbeta(1, 8)
+  }
   
   for (t in 1:n.occasions){
-    mean.Pi[t]  ~ dbeta(8, 2)
-    mean.Po[t]  ~ dbeta(4, 4)
-    mean.rR[t]  ~ dbeta(4, 4) # model is not sensitive to mean.rR & mean.rO priors
-    mean.rO[t]  ~ dbeta(4, 4) # even fixing at 0.5 does not affect other params
+    mean.Pi[t] ~ dbeta(8, 2)
+    mean.Po[t] ~ dbeta(4, 4)
+    mean.rR[t] ~ dbeta(4, 4) # model is not sensitive to mean.rR & mean.rO priors
+    mean.rO[t] ~ dbeta(4, 4) # even fixing at 0.5 does not affect other params
   }
   
   for (a in 1:n.ageC){
@@ -359,8 +365,8 @@ myInits <- list(
   mu.pri    = rbeta(1, 8, 2),
   mu.pre    = rbeta(1, 8, 2),
   mu.sen    = rbeta(1, 4, 4),
-  mean.R    = rbeta(1, 1, 8),
-  mean.M    = rbeta(1, 1, 8),
+  mean.R    = rbeta(n.ageC, 1, 8),
+  mean.M    = rbeta(n.ageC, 1, 8),
   mean.Pi   = rbeta(n.occasions, 8, 2),
   mean.Po   = rbeta(n.occasions, 4, 4),
   mean.rR   = rbeta(n.occasions, 4, 4),
@@ -500,13 +506,13 @@ if(parallelRun){
 MCMCdiag(out,
          dir = "./Results",
          save_object = T,
-         obj_name = "modelM_varObs_ageVeg.rds",
-         file_name = "modelM_varObs_ageVeg_summary.txt")
+         obj_name = out.model,
+         file_name = out.summary)
 
 
 ## Plots -----------------------------------------------------------------------
 
-out <- readRDS("results/modelF_varObs_ageVeg.rds")
+out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
@@ -532,8 +538,9 @@ model.summary
 
 # Posterior means vs year
 years <- (1:n.occasions) + 2007
+ageCs <- c("YAF", "1-2", "3-6", "7-9", "10+")
 
-mcmc.df <- as.tibble(as.matrix(out)) %>% 
+mcmc.df <- as_tibble(as.matrix(out)) %>% 
   select(starts_with("mean.")) %>% 
   mutate(iter = row_number()) %>% 
   pivot_longer(cols = starts_with("mean."),
@@ -542,18 +549,28 @@ mcmc.df <- as.tibble(as.matrix(out)) %>%
 
 mcmc.df <- mcmc.df %>% 
   mutate(param = str_extract(param.full, "mean\\.[A-Za-z]+"),
-         t = as.numeric(str_extract(param.full, "\\d+"))) %>% 
-  filter(!is.na(t))
+         index = as.numeric(str_extract(param.full, "\\d+")),
+         # identify index
+         is_time = param %in% c("mean.Pi", "mean.Po", "mean.rO", "mean.rR"),
+         is_ageC = param %in% c("mean.M", "mean.R"),
+         # create t & a columns
+         t = if_else(is_time, index, NA_real_),
+         a = if_else(is_ageC, index, NA_real_)) %>% 
+  select(iter, param.full, param, t, a, value)
 
 summaries <- mcmc.df %>% 
-  group_by(param, t) %>% 
-  summarise(mean = mean(value, na.rm = T),
-            lcl = quantile(value, 0.025, na.rm = T),
-            ucl = quantile(value, 0.975, na.rm = T),
+  group_by(param, t, a) %>% 
+  summarise(mean = mean(value, na.rm = TRUE),
+            lcl  = quantile(value, 0.025, na.rm = TRUE),
+            ucl  = quantile(value, 0.975, na.rm = TRUE),
             .groups = "drop") %>% 
-  mutate(year = years[t])
+  mutate(year = years[t],
+         ageC = factor(ageCs[a], levels = ageCs))
 
-ggplot(summaries, aes(x = year, y = mean, fill = param, colour = param)) +
+# observation/recovery
+summaries %>% 
+  filter(!is.na(t)) %>% 
+  ggplot(., aes(x = year, y = mean, fill = param, colour = param)) +
   geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2, colour = NA) +
   facet_wrap(~param, scales = "free_y") +
@@ -562,17 +579,27 @@ ggplot(summaries, aes(x = year, y = mean, fill = param, colour = param)) +
   theme(legend.position = "none",
         strip.background = element_rect(fill = "grey90", colour = NA))
 
+# roadkill/migration
+summaries %>% 
+  filter(!is.na(a)) %>% 
+  ggplot(., aes(x = ageC, y = mean, fill = param, colour = param)) +
+  geom_pointrange(aes(ymin = lcl, ymax = ucl)) +
+  facet_wrap(~param, scales = "free_y") +
+  labs(x = "Age class", y = "Posterior mean (±95% CrI)") +
+  ylim(0, 0.6) +
+  theme_bw() +
+  theme(legend.position = "none",
+        strip.background = element_rect(fill = "grey90", colour = NA))
+
+# Checks
 library(coda)
 c1 <- as.mcmc(out$chain1)
 
-# Caterpillar plot posterior distribution of phi
-# Posterior median, 50% & 95% credible interval
 MCMCplot(object = out,
          horiz = FALSE,
          rank = TRUE,
          ref_ovl = FALSE)
 
-# Check convergence of chains
 MCMCtrace(object = out,
           pdf = FALSE, # no export to PDF
           ind = TRUE, # separate density lines per chain
@@ -581,7 +608,7 @@ MCMCtrace(object = out,
           params = c("mu.juv", "mu.sub", "mu.pri", "mu.pre", "mu.sen",
                      "mean.R", "mean.M", "mean.Pi", "mean.Po", "mean.rR", "mean.rO"))
 
-# Correlation plots
+# Correlation
 autocorr.diag(out)
 # autocorr.plot(out)
 coda::crosscorr.plot(out)
