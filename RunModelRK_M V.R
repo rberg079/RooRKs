@@ -8,15 +8,11 @@
 # set toggles
 females <- TRUE
 testRun <- FALSE
-parallelRun <- FALSE
-
-addVeg <- TRUE
-addDens <- FALSE
-addWin <- FALSE
+parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_varObs_ageVeg_ageMR.rds"
-out.summary <- "modelF_varObs_ageVeg_ageMR_summary.txt"
+out.model <- "modelF_tObs_aVeg_atMR.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -29,6 +25,7 @@ library(here)
 library(lubridate)
 library(MCMCvis)
 library(nimble)
+library(parallel)
 library(patchwork)
 library(postpack)
 library(RColorBrewer)
@@ -112,19 +109,12 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  if(addVeg){
-    for (m in 1:nNoVeg){
-      veg[noVeg[m]] ~ dnorm(0, sd = 1)
-    } # m
-  }
+  for (m in 1:nNoVeg){
+    veg[noVeg[m]] ~ dnorm(0, sd = 1)
+    # dens[noDens[m]] ~ dnorm(0, sd = 1)
+  } # m
   
-  if(addDens){
-    for (m in 1:nNoVeg){
-      dens[noDens[m]] ~ dnorm(0, sd = 1)
-    } # m
-  }
-
-  if(addWin){win[noWin] ~ dnorm(0, sd = 1)}
+  # win[noWin] ~ dnorm(0, sd = 1)
   
   
   ## SURVIVAL, ROADKILL & MIGRATION MODELS
@@ -396,30 +386,19 @@ y[y == 999] <- NA
 myData <- list(y = y, 
                z = z_dat, 
                age = age,
-               ageC = ageC)
-               # veg = veg,
-               # dens = dens,
-               # win = win)
-
-
-if(addVeg){myData  <- c(myData, list(veg = veg))}
-if(addDens){myData <- c(myData, list(dens = dens))}
-if(addWin){myData  <- c(myData, list(win = win))}
-
-
-# conditionally add covariate effects
-if(envEffectsS){params <- c(params, 'BetaD.S', 'BetaV.S', 'BetaW.S')}
-if(envEffectsR){params <- c(params, 'BetaD.R', 'BetaV.R', 'BetaW.R')}
-
-
-
+               ageC = ageC,
+               veg = veg)
+               # dens = dens
+               # win = win
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("mu.phi", "mu.M", "mu.R", "B.veg",
+params <- c("B.veg",
+            "mu.phi", "mu.M", "mu.R",
+            "mean.phi", "mean.M", "mean.R",
             "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
             "sigma.phi", "sigma.M", "sigma.R",
             "veg")
@@ -441,15 +420,15 @@ myConst <- list(n.inds = n.inds,
 
 # MCMC settings
 if(testRun){
-  nb <- 0          # burn-in
-  ni <- 10         # total iterations
-  nt <- 1          # thin
-  nc <- 3          # chains
+  nburn   <- 0            # burn-in
+  niter   <- 10           # iterations
+  nthin   <- 1            # thinning
+  nchains <- 3            # chains
 }else{
-  nb <- 5000       # burn-in
-  ni <- 5000 + nb  # total iterations
-  nt <- 1          # thin
-  nc <- 3          # chains
+  nburn   <- 5000         # burn-in
+  niter   <- 5000 + nburn # iterations
+  nthin   <- 1            # thinning
+  nchains <- 3            # chains
 }
 
 
@@ -458,7 +437,7 @@ if(testRun){
 if(parallelRun){
   # run one chain inside cluster
   runChain <- function(chainID, code, data, const, inits, params,
-                       ni, nb, nt, seed){
+                       nburn, niter, nthin, seed){
     
     library(nimble)
     set.seed(seed)
@@ -474,13 +453,12 @@ if(parallelRun){
     conf <- configureMCMC(model, monitors = params, useConjugacy = F)
     mcmc <- buildMCMC(conf) # take a look at sampler
     Cmodel <- compileNimble(model, showCompilerOutput = F)
-    Cmcmc <- compileNimble(mcmc, project = Rmodel)
+    Cmcmc <- compileNimble(mcmc, project = Cmodel)
     
     samples <- runMCMC(Cmcmc,
-                       thin = nt,
-                       niter = ni,
-                       nburnin = nb,
-                       nchains = nc,
+                       nburnin = nburn,
+                       niter = niter,
+                       thin = nthin,
                        inits = myInits,
                        setSeed = F,
                        progressBar = T,
@@ -491,8 +469,8 @@ if(parallelRun){
   # create a cluster & export everything needed to each worker
   cl <- makeCluster(nchains)
   clusterExport(cl, varlist = c("myCode", "myData", "myConst", "myInits",
-                                "params", "nthin", "nburnin", "niter",
-                                "seedMod", "runChain"))
+                                "params", "nburn", "niter", "nthin",
+                                "runChain"))
 }
 
 if(parallelRun){
@@ -505,9 +483,9 @@ if(parallelRun){
              const = myConst,
              inits = myInits,
              params = params,
-             nthin = nt,
-             nburnin = nb,
-             niter = ni,
+             nburn = nburn,
+             niter = niter,
+             nthin = nthin,
              seed = i)})
   dur <- Sys.time() - start; dur
   stopCluster(cl)
@@ -520,10 +498,10 @@ if(parallelRun){
                     constants = myConst,
                     inits = myInits,
                     monitors = params,
-                    niter = ni,
-                    nburnin = nb,
-                    nchains = nc,
-                    thin = nt,
+                    nburnin = nburn,
+                    niter = niter,
+                    thin = nthin,
+                    nchains = nchains,
                     samplesAsCodaMCMC = T,
                     setSeed = 1:3)
   dur <- Sys.time() - start; dur
@@ -535,7 +513,7 @@ MCMCdiag(out,
          dir = "./Results",
          save_object = T,
          obj_name = out.model,
-         file_name = out.summary)
+         file_name = out.sum)
 
 
 ## Plots -----------------------------------------------------------------------
@@ -568,7 +546,11 @@ model.summary
 years <- (1:n.occasions) + 2007
 ageCs <- c("YAF", "1-2", "3-6", "7-9", "10+")
 
-mcmc.df <- as_tibble(as.matrix(out)) %>% 
+mcmc.df <- out %>% 
+  map(~as.data.frame(as.matrix(.x))) %>% 
+  bind_rows()
+
+mcmc.df <- mcmc.df %>% 
   select(starts_with("mean.")) %>% 
   mutate(iter = row_number()) %>% 
   pivot_longer(cols = starts_with("mean."),
@@ -577,27 +559,32 @@ mcmc.df <- as_tibble(as.matrix(out)) %>%
 
 mcmc.df <- mcmc.df %>% 
   mutate(param = str_extract(param.full, "mean\\.[A-Za-z]+"),
-         index = as.numeric(str_extract(param.full, "\\d+")),
-         # identify index
+         # extract all numbers inside brackets
+         index = str_extract_all(param.full, "\\d+"),
+         index1 = map_dbl(index, ~as.numeric(.x[1])),
+         index2 = map_dbl(index, ~ifelse(length(.x) > 1, as.numeric(.x[2]), NA_real_)),
+         
+         # identify parameter dimensions
          is_time = param %in% c("mean.Pi", "mean.Po", "mean.rO", "mean.rR"),
-         is_ageC = param %in% c("mean.M", "mean.R"),
-         # create t & a columns
-         t = if_else(is_time, index, NA_real_),
-         a = if_else(is_ageC, index, NA_real_)) %>% 
-  select(iter, param.full, param, t, a, value)
+         is_both = param %in% c("mean.M", "mean.R"),
+         
+         # assign t & a depending on parameter
+         t = case_when(is_time ~ index1, is_both ~ index2),
+         a = case_when(is_both ~ index1, TRUE ~ NA_real_)) %>% 
+  select(iter, param.full, param, a, t, value)
 
 summaries <- mcmc.df %>% 
-  group_by(param, t, a) %>% 
+  group_by(param, a, t) %>% 
   summarise(mean = mean(value, na.rm = TRUE),
-            lcl  = quantile(value, 0.025, na.rm = TRUE),
-            ucl  = quantile(value, 0.975, na.rm = TRUE),
+            lcl = quantile(value, 0.025, na.rm = TRUE),
+            ucl = quantile(value, 0.975, na.rm = TRUE),
             .groups = "drop") %>% 
   mutate(year = years[t],
          ageC = factor(ageCs[a], levels = ageCs))
 
 # observation/recovery
 summaries %>% 
-  filter(!is.na(t)) %>% 
+  filter(param %in% c("mean.Pi","mean.Po","mean.rO","mean.rR")) %>% 
   ggplot(., aes(x = year, y = mean, fill = param, colour = param)) +
   geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.2, colour = NA) +
@@ -609,15 +596,36 @@ summaries %>%
 
 # roadkill/migration
 summaries %>% 
-  filter(!is.na(a)) %>% 
-  ggplot(., aes(x = ageC, y = mean, fill = param, colour = param)) +
-  geom_pointrange(aes(ymin = lcl, ymax = ucl)) +
+  filter(param %in% c("mean.M","mean.R")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   facet_wrap(~param, scales = "free_y") +
-  labs(x = "Age class", y = "Posterior mean (±95% CrI)") +
-  ylim(0, 0.6) +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class") +
   theme_bw() +
-  theme(legend.position = "none",
-        strip.background = element_rect(fill = "grey90", colour = NA))
+  theme(strip.background = element_rect(fill = "grey90", colour = NA))
+
+# rs7.age <- pred.df %>%
+#   ggplot(., aes(x = .data[[var]], y = rs.mean)) +
+#   geom_ribbon(aes(ymin = rs.lower, ymax = rs.upper, fill = prs, group = prs), alpha = 0.2, show.legend = F) +
+#   geom_line(aes(colour = prs, group = prs), linewidth = 1, show.legend = F) +
+#   geom_jitter(aes(x = .data[[var]], y = y, colour = prs),
+#               inherit.aes = FALSE,
+#               data = obs.data %>% filter(!is.na(prs)),
+#               height = 0.02,
+#               alpha = 0.4,
+#               show.legend = F) +
+#   scale_colour_manual(values = prs.colours) +
+#   scale_fill_manual(values = prs.colours) +
+#   # xlim(this.range) +
+#   scale_x_continuous(breaks = c(2,6,10,14,18)) +
+#   theme_bw() +
+#   theme(axis.title = element_text(size = 12),
+#         axis.title.x = element_blank()) +
+#   labs(x = this.name,
+#        y = "Probability of producing a LPY",
+#        fill = "Previous\nreproductive\nsuccess",
+#        colour = "Previous\nreproductive\nsuccess"); rs7.age
 
 # Checks
 library(coda)
