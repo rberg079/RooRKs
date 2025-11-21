@@ -10,9 +10,13 @@ females <- TRUE
 testRun <- FALSE
 parallelRun <- FALSE
 
+addVeg <- TRUE
+addDens <- FALSE
+addWin <- FALSE
+
 # name outputs
-out.model <- "modelF_varObs_ageVeg_ageMR2.rds"
-out.summary <- "modelF_varObs_ageVeg_ageMR2_summary.txt"
+out.model <- "modelF_varObs_ageVeg_ageMR.rds"
+out.summary <- "modelF_varObs_ageVeg_ageMR_summary.txt"
 
 # load libraries
 library(bayesplot)
@@ -108,59 +112,39 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  for (m in 1:nNoVeg){
-    veg[noVeg[m]] ~ dnorm(0, sd = 1)
-  } # m
+  if(addVeg){
+    for (m in 1:nNoVeg){
+      veg[noVeg[m]] ~ dnorm(0, sd = 1)
+    } # m
+  }
+  
+  if(addDens){
+    for (m in 1:nNoVeg){
+      dens[noDens[m]] ~ dnorm(0, sd = 1)
+    } # m
+  }
 
-  # win[noWin] ~ dnorm(0, sd = 1)
+  if(addWin){win[noWin] ~ dnorm(0, sd = 1)}
   
   
-  ## SURVIVAL MODEL
+  ## SURVIVAL, ROADKILL & MIGRATION MODELS
   ## ---------------------------------------------------------------------------
-  
-  # logit-linear function of time-dependent covariates
-  # for (t in 1:(n.occasions-1)){
-  #   eps.phi[1, t] ~ dnorm(0, tau.phi)
-  #   eps.phi[2, t] ~ dnorm(0, tau.phi)
-  #   eps.phi[3, t] ~ dnorm(0, tau.phi)
-  #   eps.phi[4, t] ~ dnorm(0, tau.phi)
-  #   eps.phi[5, t] ~ dnorm(0, tau.phi)
-  #   
-  #   logit(phi.juv[t]) <- logit(mu.juv) + B.veg[1] * veg[t] + eps.phi[1, t]
-  #   logit(phi.sub[t]) <- logit(mu.sub) + B.veg[2] * veg[t] + eps.phi[2, t]
-  #   logit(phi.pri[t]) <- logit(mu.pri) + B.veg[3] * veg[t] + eps.phi[3, t]
-  #   logit(phi.pre[t]) <- logit(mu.pre) + B.veg[4] * veg[t] + eps.phi[4, t]
-  #   logit(phi.sen[t]) <- logit(mu.sen) + B.veg[5] * veg[t] + eps.phi[5, t]
-  #   
-  #   mean.phi[1, t] <- phi.juv[t]
-  #   mean.phi[2, t] <- phi.sub[t]
-  #   mean.phi[3, t] <- phi.pri[t]
-  #   mean.phi[4, t] <- phi.pre[t]
-  #   mean.phi[5, t] <- phi.sen[t]
-  # } # t
   
   for (a in 1:n.ageC){
     for (t in 1:(n.occasions-1)){
-      eps.phi[a, t] ~ dnorm(0, tau.phi)
       
+      # random year effect
+      eps.phi[a, t] ~ dnorm(0, tau.phi)
+      eps.M[a, t]   ~ dnorm(0, tau.M)
+      eps.R[a, t]   ~ dnorm(0, tau.R)
+      
+      # logit-linear function of covariates
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) + B.veg[a] * veg[t] + eps.phi[a, t]
+      logit(mean.M[a, t])   <- logit(mu.M[a]) + eps.M[a, t]
+      logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[a, t]
       
     } # t
   } # a
-  
-  
-  # ## MIGRATION & ROADKILL MODELS
-  # ## ------------------------------------------------------------
-  # 
-  # for (a in 1:n.ageC){
-  #   for (t in 1:(n.occasions - 1)){
-  #     eps.M[a, t] ~ dnorm(0, tau.M)
-  #     eps.R[a, t] ~ dnorm(0, tau.R)
-  #     
-  #     logit(mean.M[a, t]) <- logit(mu.M[a]) + eps.M[a, t]
-  #     logit(mean.R[a, t]) <- logit(mu.R[a]) + eps.R[a, t]
-  #   } # t
-  # } # a
   
   
   ## LIKELIHOOD
@@ -169,7 +153,7 @@ myCode <- nimbleCode({
   for (i in 1:n.inds){
     for (t in (first[i]+1):n.occasions){
       
-      #### Likelihood ####
+      # likelihood
       z[i, t] ~ dcat(trans.mat[i, z[i, t-1], 1:n.true.states, t-1]) # z is latent
       y[i, t] ~ dcat(obs.mat[i, z[i, t], 1:n.obs.states, t]) # y is observed
       
@@ -184,8 +168,8 @@ myCode <- nimbleCode({
     for (t in first[i]:(n.occasions-1)){
       
       phi[i,t] <- mean.phi[ageC[age[i,t]], t] # survival
-      R[i,t]   <- mean.R[ageC[age[i,t]]]      # mortality by roadkill by age class
-      M[i,t]   <- mean.M[ageC[age[i,t]]]      # migration (in or out) by age class
+      R[i,t]   <- mean.R[ageC[age[i,t]], t]   # roadkill
+      M[i,t]   <- mean.M[ageC[age[i,t]], t]   # migration
       
       #### Transition matrix ####
       # 1 - alive on-site
@@ -239,10 +223,10 @@ myCode <- nimbleCode({
   for (i in 1:n.inds){
     for (t in (first[i]+1):n.occasions){
       
-      Pi[i,t] <- mean.Pi[t]  # probability of observation, on-site
-      Po[i,t] <- mean.Po[t]  # probability of observation, off-site
-      rR[i,t] <- mean.rR[t]  # probability of recovery, roadkill
-      rO[i,t] <- mean.rO[t]  # probability of recovery, natural death
+      Pi[i,t] <- mean.Pi[t]  # observation on-site
+      Po[i,t] <- mean.Po[t]  # observation off-site
+      rR[i,t] <- mean.rR[t]  # recovery of roadkill
+      rO[i,t] <- mean.rO[t]  # recovery of other death
       
       #### Observation matrix ####
       # 1 - seen on-site
@@ -306,33 +290,32 @@ myCode <- nimbleCode({
   # mu.phi[4] ~ dbeta(8, 2)
   # mu.phi[5] ~ dbeta(4, 4)
   
-  for (a in 1:n.ageC) {
+  for (a in 1:n.ageC){
     mu.phi[a] ~ dbeta(4, 4)
-    # mu.M[a]   ~ dbeta(1, 8)
-    # mu.R[a]   ~ dbeta(1, 8)
+    mu.M[a]   ~ dbeta(1, 8)
+    mu.R[a]   ~ dbeta(1, 8)
+    B.veg[a]  ~ dnorm(0, 1)
     
-    mean.M[a] ~ dbeta(1, 8)
-    mean.R[a] ~ dbeta(1, 8)
-  }
+  } # a
   
   for (t in 1:n.occasions){
     mean.Pi[t] ~ dbeta(8, 2)
     mean.Po[t] ~ dbeta(4, 4)
-    mean.rR[t] ~ dbeta(4, 4) # model is not sensitive to mean.rR & mean.rO priors
-    mean.rO[t] ~ dbeta(4, 4) # even fixing at 0.5 does not affect other params
-  }
+    mean.rR[t] ~ dbeta(4, 4)
+    mean.rO[t] ~ dbeta(4, 4)
+    
+  } # t
   
-  for (a in 1:n.ageC){
-    B.veg[a] ~ dnorm(0, 1)
-  }
+  # does not seem sensitive to mean.rR & mean.rO priors
+  # even fixing at 0.5 does not seem to affect other params
   
   sigma.phi ~ dunif(0, 4)
-  tau.phi <- 1 / (sigma.phi * sigma.phi)
+  sigma.M   ~ dunif(0, 4)
+  sigma.R   ~ dunif(0, 4)
   
-  # sigma.M ~ dunif(0, 4)
-  # sigma.R ~ dunif(0, 4)
-  # tau.M <- 1 / (sigma.M * sigma.M)
-  # tau.R <- 1 / (sigma.R * sigma.R)
+  tau.phi <- 1 / (sigma.phi * sigma.phi)
+  tau.M   <- 1 / (sigma.M * sigma.M)
+  tau.R   <- 1 / (sigma.R * sigma.R)
   
 }) # nimbleCode
 
@@ -340,7 +323,7 @@ myCode <- nimbleCode({
 ## Initial values --------------------------------------------------------------
 
 # data is coded as OBSERVATION states
-# providing model with initial values for deterministic TRANSITIONS
+# initial values are provided for deterministic TRANSITIONS
 
 # TRANSITION STATES
 # 1 - alive on-site
@@ -393,16 +376,19 @@ z_dat <- ZZs$z_dat
 myInits <- list(
   z         = z_inits,
   mu.phi    = rbeta(n.ageC, 4, 4),
-  mean.R    = rbeta(n.ageC, 1, 8),
-  mean.M    = rbeta(n.ageC, 1, 8),
+  mu.R      = rbeta(n.ageC, 1, 8),
+  mu.M      = rbeta(n.ageC, 1, 8),
   mean.Pi   = rbeta(n.occasions, 8, 2),
   mean.Po   = rbeta(n.occasions, 4, 4),
   mean.rR   = rbeta(n.occasions, 4, 4),
   mean.rO   = rbeta(n.occasions, 4, 4),
   B.veg     = rep(0, n.ageC),
-  eps.phi   = matrix(rnorm((n.occasions-1)*n.ageC, 0, 0.1),
-                     ncol = (n.occasions-1), nrow = n.ageC),
-  sigma.phi = runif(1, 0.5, 1.5)
+  eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  sigma.phi = runif(1, 0.5, 1.5),
+  sigma.M   = runif(1, 0.5, 1.5),
+  sigma.R   = runif(1, 0.5, 1.5)
 )
 
 # Data
@@ -410,20 +396,33 @@ y[y == 999] <- NA
 myData <- list(y = y, 
                z = z_dat, 
                age = age,
-               ageC = ageC,
-               veg = veg)
+               ageC = ageC)
+               # veg = veg,
                # dens = dens,
                # win = win)
+
+
+if(addVeg){myData  <- c(myData, list(veg = veg))}
+if(addDens){myData <- c(myData, list(dens = dens))}
+if(addWin){myData  <- c(myData, list(win = win))}
+
+
+# conditionally add covariate effects
+if(envEffectsS){params <- c(params, 'BetaD.S', 'BetaV.S', 'BetaW.S')}
+if(envEffectsR){params <- c(params, 'BetaD.R', 'BetaV.R', 'BetaW.R')}
+
+
+
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("mu.phi",
-            "mean.R", "mean.M",
+params <- c("mu.phi", "mu.M", "mu.R", "B.veg",
             "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "B.veg", "sigma.phi", "veg")
+            "sigma.phi", "sigma.M", "sigma.R",
+            "veg")
 
 # Constants
 myConst <- list(n.inds = n.inds,
