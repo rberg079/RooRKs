@@ -21,6 +21,7 @@ prepDataRK <- function(females = T){
   
   surv <- read_excel("data/PromSurvivalOct24.xlsx", sheet = "YEARLY SURV")
   if(females){age <- read_csv("data/ageF.csv")}else{age <- read_csv("data/ageM.csv")}
+  obs <- read_excel("data/PromObs_2008-2024.xlsx")
   env <- read_csv("data/Env_Mar25.csv")
   
   # modify column names to read as survived to s20XX
@@ -164,6 +165,16 @@ prepDataRK <- function(females = T){
   
   ## Individual data -----------------------------------------------------------
   
+  # observer days data
+  obs <- obs %>%
+    select(Date, Month, Day, Year, Time, ID, X, Y, Observer) %>% 
+    mutate(Time = format(as.POSIXct(Time), format = "%H:%M")) %>% 
+    distinct(Year, Date, Observer) %>% 
+    group_by(Year) %>% 
+    summarise(n = n()) %>% 
+    ungroup()
+  
+  # age data
   # age <- surv %>%
   #   select(1,3,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36) %>%
   #   mutate_at(vars(-ID, -Cohort), ~ifelse(.== "A", NA, .)) %>%
@@ -205,7 +216,7 @@ prepDataRK <- function(females = T){
   ageC <- c(0, rep(1,2), rep(2,4), rep(3,3), rep(4,30))+1
   remove(surv)
   
-  
+
   ## Environmental data --------------------------------------------------------
   
   env <- env %>% 
@@ -257,6 +268,7 @@ prepDataRK <- function(females = T){
   dataRK <- list(
     y = y,
     id = id,
+    obs = obs,
     env = env,
     age = age,
     ageC = ageC,
