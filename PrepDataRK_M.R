@@ -174,6 +174,10 @@ prepDataRK <- function(females = T){
     summarise(n = n()) %>% 
     ungroup()
   
+  # TEMP; until I figure out Emily's obs*days
+  obs <- rbind(obs, c(2021, 10)) %>% 
+    arrange(Year)
+  
   # age data
   # age <- surv %>%
   #   select(1,3,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36) %>%
@@ -232,6 +236,7 @@ prepDataRK <- function(females = T){
     ungroup()
   
   env  <- env[3:19,] # [2008:2024,]
+  obs  <- round(as.numeric(scale(obs$n)), 3)
   veg  <- round(as.numeric(scale(env$Veg)), 3)
   dens <- round(as.numeric(scale(env$Dens)), 3)
   win  <- round(as.numeric(scale(env$Win)), 3)

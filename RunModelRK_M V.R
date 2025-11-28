@@ -11,8 +11,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_sum.txt"
+out.model <- "modelF_tObs_aVeg_atMR_obs.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_obs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -117,7 +117,7 @@ myCode <- nimbleCode({
   # win[noWin] ~ dnorm(0, sd = 1)
   
   
-  ## SURVIVAL, ROADKILL & MIGRATION MODELS
+  ## SURVIVAL & MOVEMENT MODELS
   ## ---------------------------------------------------------------------------
   
   for (a in 1:n.ageC){
@@ -135,6 +135,18 @@ myCode <- nimbleCode({
       
     } # t
   } # a
+  
+  
+  ## OBSERVATION & RECOVERY MODELS
+  ## ---------------------------------------------------------------------------
+  
+  for (t in 1:(n.occasions-1)){
+    eps.rR[t] ~ dnorm(0, tau.rR)
+    eps.rO[t] ~ dnorm(0, tau.rO)
+    
+    logit(mean.rR[t]) <- logit(mu.rR) + B.obsR * obs[t] + eps.rR[t]
+    logit(mean.rO[t]) <- logit(mu.rO) + B.obsO * obs[t] + eps.rO[t]
+  }
   
   
   ## LIKELIHOOD
@@ -285,27 +297,29 @@ myCode <- nimbleCode({
     mu.M[a]   ~ dbeta(1, 8)
     mu.R[a]   ~ dbeta(1, 8)
     B.veg[a]  ~ dnorm(0, 1)
-    
   } # a
   
   for (t in 1:n.occasions){
     mean.Pi[t] ~ dbeta(8, 2)
     mean.Po[t] ~ dbeta(4, 4)
-    mean.rR[t] ~ dbeta(4, 4)
-    mean.rO[t] ~ dbeta(4, 4)
-    
   } # t
   
-  # does not seem sensitive to mean.rR & mean.rO priors
-  # even fixing at 0.5 does not seem to affect other params
+  mu.rR  ~ dbeta(4, 4)
+  mu.rO  ~ dbeta(4, 4)
+  B.obsR ~ dnorm(0, 1)
+  B.obsO ~ dnorm(0, 1)
   
   sigma.phi ~ dunif(0, 4)
   sigma.M   ~ dunif(0, 4)
   sigma.R   ~ dunif(0, 4)
+  sigma.rR  ~ dunif(0, 4)
+  sigma.rO  ~ dunif(0, 4)
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.M   <- 1 / (sigma.M * sigma.M)
   tau.R   <- 1 / (sigma.R * sigma.R)
+  tau.rR  <- 1 / (sigma.rR * sigma.rR)
+  tau.rO  <- 1 / (sigma.rO * sigma.rO)
   
 }) # nimbleCode
 
@@ -368,17 +382,23 @@ myInits <- list(
   mu.phi    = rbeta(n.ageC, 4, 4),
   mu.R      = rbeta(n.ageC, 1, 8),
   mu.M      = rbeta(n.ageC, 1, 8),
+  mu.rR     = rbeta(1, 4, 4),
+  mu.rO     = rbeta(1, 4, 4),
   mean.Pi   = rbeta(n.occasions, 8, 2),
   mean.Po   = rbeta(n.occasions, 4, 4),
-  mean.rR   = rbeta(n.occasions, 4, 4),
-  mean.rO   = rbeta(n.occasions, 4, 4),
-  B.veg     = rep(0, n.ageC),
+  B.veg     = rnorm(n.ageC, 0, 0.1),
+  B.obsR    = 0,
+  B.obsO    = 0,
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.rR    = rnorm(n.occasions-1, 0, 0.1),
+  eps.rO    = rnorm(n.occasions-1, 0, 0.1),
   sigma.phi = runif(1, 0.5, 1.5),
   sigma.M   = runif(1, 0.5, 1.5),
-  sigma.R   = runif(1, 0.5, 1.5)
+  sigma.R   = runif(1, 0.5, 1.5),
+  sigma.rR  = runif(1, 0.5, 1.5),
+  sigma.rO  = runif(1, 0.5, 1.5)
 )
 
 # Data
@@ -387,6 +407,7 @@ myData <- list(y = y,
                z = z_dat, 
                age = age,
                ageC = ageC,
+               obs = obs,
                veg = veg)
                # dens = dens
                # win = win
@@ -396,11 +417,11 @@ myData <- list(y = y,
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("B.veg",
-            "mu.phi", "mu.M", "mu.R",
+params <- c("B.veg", "B.obsR", "B.obsO",
             "mean.phi", "mean.M", "mean.R",
+            "mu.phi", "mu.M", "mu.R", "mu.rR", "mu.rO",
             "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "sigma.phi", "sigma.M", "sigma.R",
+            "sigma.phi", "sigma.M", "sigma.R", "sigma.rR", "sigma.rO",
             "veg")
 
 # Constants
