@@ -1,6 +1,5 @@
 # 28 October 2025
-# Attempt to add age-specific environmental effects
-# & perhaps age-specific random year effects
+# Road mortality analyses
 
 
 ## Set up ----------------------------------------------------------------------
@@ -140,20 +139,16 @@ myCode <- nimbleCode({
   ## OBSERVATION & RECOVERY MODELS
   ## ---------------------------------------------------------------------------
   
-  # for (t in 1:(n.occasions-1)){
-  #   eps.rR[t] ~ dnorm(0, tau.rR)
-  #   eps.rO[t] ~ dnorm(0, tau.rO)
-  #   
-  #   logit(mean.rR[t]) <- logit(mu.rR) + B.obsR * obs[t] + eps.rR[t]
-  #   logit(mean.rO[t]) <- logit(mu.rO) + B.obsO * obs[t] + eps.rO[t]
-  # } # t
-  
   for (t in 1:n.occasions){
+    
+    # random year effects
     eps.rR[t] ~ dnorm(0, tau.rR)
     eps.rO[t] ~ dnorm(0, tau.rO)
     
+    # logit-linear function of covariates
     logit(mean.rR[t]) <- logit(mu.rR) + B.obsR * obs[t] + eps.rR[t]
     logit(mean.rO[t]) <- logit(mu.rO) + B.obsO * obs[t] + eps.rO[t]
+    
   } # t
   
   
