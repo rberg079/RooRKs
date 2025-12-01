@@ -544,11 +544,11 @@ MCMCdiag(out,
          obj_name = out.model,
          file_name = out.sum)
 
-# TEMP
-# which columns contain NAs
-library(coda)
-post <- as.mcmc(do.call(rbind, out))
-which(apply(post, 2, function(x) any(is.na(x) | is.nan(x))))
+# # TEMP
+# # which columns contain NAs
+# library(coda)
+# post <- as.mcmc(do.call(rbind, out))
+# which(apply(post, 2, function(x) any(is.na(x) | is.nan(x))))
 
 
 ## Plots -----------------------------------------------------------------------
@@ -636,7 +636,7 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class") +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
 
@@ -676,8 +676,12 @@ MCMCtrace(object = out,
           ind = TRUE, # separate density lines per chain
           Rhat = TRUE, # add Rhat diagnostics
           n.eff = TRUE, # add eff sample size
-          params = c("mu.juv", "mu.sub", "mu.pri", "mu.pre", "mu.sen",
-                     "mean.R", "mean.M", "mean.Pi", "mean.Po", "mean.rR", "mean.rO"))
+          params = c("B.veg", "B.obsR", "B.obsO",
+                     "mean.phi", "mean.M", "mean.R",
+                     "mu.phi", "mu.M", "mu.R", "mu.rR", "mu.rO",
+                     "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
+                     "sigma.phi", "sigma.M", "sigma.R",
+                     "sigma.rR", "sigma.rO"))
 
 # Correlation
 autocorr.diag(out)
