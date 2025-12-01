@@ -553,6 +553,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
+out.model <- "modelF_tObs_aVeg_atMR.rds"
 out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
@@ -672,11 +673,11 @@ MCMCplot(object = out,
          ref_ovl = FALSE)
 
 MCMCtrace(object = out,
-          pdf = FALSE, # no export to PDF
+          pdf = TRUE, # no export to PDF
           ind = TRUE, # separate density lines per chain
           Rhat = TRUE, # add Rhat diagnostics
           n.eff = TRUE, # add eff sample size
-          params = c("B.veg", "B.obsR", "B.obsO",
+          params = c("B.veg", # "B.obsR", "B.obsO",
                      "mean.phi", "mean.M", "mean.R",
                      "mu.phi", "mu.M", "mu.R", "mu.rR", "mu.rO",
                      "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
