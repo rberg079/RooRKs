@@ -140,13 +140,21 @@ myCode <- nimbleCode({
   ## OBSERVATION & RECOVERY MODELS
   ## ---------------------------------------------------------------------------
   
-  for (t in 1:(n.occasions-1)){
+  # for (t in 1:(n.occasions-1)){
+  #   eps.rR[t] ~ dnorm(0, tau.rR)
+  #   eps.rO[t] ~ dnorm(0, tau.rO)
+  #   
+  #   logit(mean.rR[t]) <- logit(mu.rR) + B.obsR * obs[t] + eps.rR[t]
+  #   logit(mean.rO[t]) <- logit(mu.rO) + B.obsO * obs[t] + eps.rO[t]
+  # } # t
+  
+  for (t in 1:n.occasions){
     eps.rR[t] ~ dnorm(0, tau.rR)
     eps.rO[t] ~ dnorm(0, tau.rO)
     
     logit(mean.rR[t]) <- logit(mu.rR) + B.obsR * obs[t] + eps.rR[t]
     logit(mean.rO[t]) <- logit(mu.rO) + B.obsO * obs[t] + eps.rO[t]
-  }
+  } # t
   
   
   ## LIKELIHOOD
@@ -300,7 +308,7 @@ myCode <- nimbleCode({
   } # a
   
   for (t in 1:n.occasions){
-    mean.Pi[t] ~ dbeta(8, 2)
+    mean.Pi[t] ~ dbeta(8, 1)
     mean.Po[t] ~ dbeta(4, 4)
   } # t
   
@@ -384,16 +392,16 @@ myInits <- list(
   mu.M      = rbeta(n.ageC, 1, 8),
   mu.rR     = rbeta(1, 4, 4),
   mu.rO     = rbeta(1, 4, 4),
-  mean.Pi   = rbeta(n.occasions, 8, 2),
+  mean.Pi   = rbeta(n.occasions, 8, 1),
   mean.Po   = rbeta(n.occasions, 4, 4),
   B.veg     = rnorm(n.ageC, 0, 0.1),
-  B.obsR    = 0,
-  B.obsO    = 0,
+  B.obsR    = rnorm(1, 0, 0.1),
+  B.obsO    = rnorm(1, 0, 0.1),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
-  eps.rR    = rnorm(n.occasions-1, 0, 0.1),
-  eps.rO    = rnorm(n.occasions-1, 0, 0.1),
+  eps.rR    = rnorm(n.occasions, 0, 0.1),
+  eps.rO    = rnorm(n.occasions, 0, 0.1),
   sigma.phi = runif(1, 0.5, 1.5),
   sigma.M   = runif(1, 0.5, 1.5),
   sigma.R   = runif(1, 0.5, 1.5),
@@ -535,6 +543,12 @@ MCMCdiag(out,
          save_object = T,
          obj_name = out.model,
          file_name = out.sum)
+
+# TEMP
+# which columns contain NAs
+library(coda)
+post <- as.mcmc(do.call(rbind, out))
+which(apply(post, 2, function(x) any(is.na(x) | is.nan(x))))
 
 
 ## Plots -----------------------------------------------------------------------
