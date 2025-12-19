@@ -17,29 +17,25 @@
 #'
 #' @examples
 
-compareModels_ME <- function(nYear = 17,
-                             minYear = 2008,
-                             maxYear,
-                             nAgeC = 5,
-                             # plotAges = 1:nAgeC,
-                             # plotYears = 1:nYear,
-                             postPaths,
-                             modelNames,
-                             plotFolder,
-                             returnSumData = FALSE){
+compareModels <- function(nYear = 17,
+                          minYear = 2008,
+                          maxYear,
+                          nAgeC = 5,
+                          postPaths,
+                          modelNames,
+                          plotFolder,
+                          returnSumData = FALSE){
   
-  # for testing purposes
-  nYear = 17
-  minYear = 2008
-  nAgeC = 5
-  # plotAges = c(2, 6, 10, 14)
-  # plotYears = c(2, 6, 10, 14)
-  postPaths = c("results/modelF_tObs_aVeg_atMR_obs.rds",
-                "results/modelF_tObs_aVeg_atMR.rds")
-  modelNames = c("modF_obs",
-                 "modF_og")
-  plotFolder = c("figures/tweaks")
-  returnSumData = TRUE
+  # # for testing purposes
+  # nYear = 17
+  # minYear = 2008
+  # nAgeC = 5
+  # postPaths = c("results/modelF_tObs_aVeg_atMR_obs.rds",
+  #               "results/modelF_tObs_aVeg_atMR.rds")
+  # modelNames = c("modF_obs",
+  #                "modF_og")
+  # plotFolder = c("figures/tweaks")
+  # returnSumData = TRUE
   
   
   ## Set up --------------------------------------------------------------------

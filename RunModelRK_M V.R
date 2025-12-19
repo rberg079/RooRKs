@@ -673,3 +673,14 @@ autocorr.diag(out)
 # autocorr.plot(out)
 coda::crosscorr.plot(out)
 
+
+## Compare model outputs -------------------------------------------------------
+
+source('compareModels.R')
+CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR_obs.rds",
+                            "results/modelF_tObs_aVeg_atMR.rds"),
+              modelNames = c("modF_obs",
+                             "modF_og"),
+              plotFolder = c("figures/tweaks"),
+              returnSumData = TRUE)
+
