@@ -597,7 +597,7 @@ mcmc.df <- mcmc.df %>%
          
          # identify parameter dimensions
          is_time = param %in% c("mean.Pi", "mean.Po", "mean.rO", "mean.rR"),
-         is_both = param %in% c("mean.M", "mean.R"),
+         is_both = param %in% c("mean.phi", "mean.M", "mean.R"),
          
          # assign t & a depending on parameter
          t = case_when(is_time ~ index1, is_both ~ index2),
@@ -636,27 +636,16 @@ summaries %>%
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
 
-# rs7.age <- pred.df %>%
-#   ggplot(., aes(x = .data[[var]], y = rs.mean)) +
-#   geom_ribbon(aes(ymin = rs.lower, ymax = rs.upper, fill = prs, group = prs), alpha = 0.2, show.legend = F) +
-#   geom_line(aes(colour = prs, group = prs), linewidth = 1, show.legend = F) +
-#   geom_jitter(aes(x = .data[[var]], y = y, colour = prs),
-#               inherit.aes = FALSE,
-#               data = obs.data %>% filter(!is.na(prs)),
-#               height = 0.02,
-#               alpha = 0.4,
-#               show.legend = F) +
-#   scale_colour_manual(values = prs.colours) +
-#   scale_fill_manual(values = prs.colours) +
-#   # xlim(this.range) +
-#   scale_x_continuous(breaks = c(2,6,10,14,18)) +
-#   theme_bw() +
-#   theme(axis.title = element_text(size = 12),
-#         axis.title.x = element_blank()) +
-#   labs(x = this.name,
-#        y = "Probability of producing a LPY",
-#        fill = "Previous\nreproductive\nsuccess",
-#        colour = "Previous\nreproductive\nsuccess"); rs7.age
+# survival
+summaries %>% 
+  filter(param %in% c("mean.phi")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  # facet_wrap(~param, scales = "free_y") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class") +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = "grey90", colour = NA))
 
 # Checks
 library(coda)
