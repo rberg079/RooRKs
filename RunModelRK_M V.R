@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR_obs.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_obs_sum.txt"
+out.model <- "modelF_tObs_aVeg_atMR_dexp.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_dexp_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -146,8 +146,8 @@ myCode <- nimbleCode({
     eps.rO[t] ~ dnorm(0, tau.rO)
     
     # logit-linear function of covariates
-    logit(mean.rR[t]) <- logit(mu.rR) + B.obsR * obs[t] + eps.rR[t]
-    logit(mean.rO[t]) <- logit(mu.rO) + B.obsO * obs[t] + eps.rO[t]
+    logit(mean.rR[t]) <- logit(mu.rR) + eps.rR[t] # + B.obsR * obs[t]
+    logit(mean.rO[t]) <- logit(mu.rO) + eps.rO[t] # + B.obsO * obs[t]
     
   } # t
   
@@ -309,14 +309,14 @@ myCode <- nimbleCode({
   
   mu.rR  ~ dbeta(4, 4)
   mu.rO  ~ dbeta(4, 4)
-  B.obsR ~ dnorm(0, 1)
-  B.obsO ~ dnorm(0, 1)
+  # B.obsR ~ dnorm(0, 1)
+  # B.obsO ~ dnorm(0, 1)
   
-  sigma.phi ~ dunif(0, 4)
-  sigma.M   ~ dunif(0, 4)
-  sigma.R   ~ dunif(0, 4)
-  sigma.rR  ~ dunif(0, 4)
-  sigma.rO  ~ dunif(0, 4)
+  sigma.phi ~ dexp(10)
+  sigma.M   ~ dexp(10)
+  sigma.R   ~ dexp(10)
+  sigma.rR  ~ dexp(10)
+  sigma.rO  ~ dexp(10)
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.M   <- 1 / (sigma.M * sigma.M)
@@ -390,18 +390,18 @@ myInits <- list(
   mean.Pi   = rbeta(n.occasions, 8, 1),
   mean.Po   = rbeta(n.occasions, 4, 4),
   B.veg     = rnorm(n.ageC, 0, 0.1),
-  B.obsR    = rnorm(1, 0, 0.1),
-  B.obsO    = rnorm(1, 0, 0.1),
+  # B.obsR    = rnorm(1, 0, 0.1),
+  # B.obsO    = rnorm(1, 0, 0.1),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.rR    = rnorm(n.occasions, 0, 0.1),
   eps.rO    = rnorm(n.occasions, 0, 0.1),
-  sigma.phi = runif(1, 0.5, 1.5),
-  sigma.M   = runif(1, 0.5, 1.5),
-  sigma.R   = runif(1, 0.5, 1.5),
-  sigma.rR  = runif(1, 0.5, 1.5),
-  sigma.rO  = runif(1, 0.5, 1.5)
+  sigma.phi = rexp(1, 10),
+  sigma.M   = rexp(1, 10),
+  sigma.R   = rexp(1, 10),
+  sigma.rR  = rexp(1, 10),
+  sigma.rO  = rexp(1, 10)
 )
 
 # Data
@@ -420,7 +420,7 @@ myData <- list(y = y,
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("B.veg", "B.obsR", "B.obsO",
+params <- c("B.veg", # "B.obsR", "B.obsO",
             "mean.phi", "mean.M", "mean.R",
             "mu.phi", "mu.M", "mu.R", "mu.rR", "mu.rO",
             "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
