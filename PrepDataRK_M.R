@@ -19,6 +19,7 @@ prepDataRK <- function(females = T){
   
   ## Load & clean up data ------------------------------------------------------
   
+  yafs <- read_excel("data/RSmain_Jan26.xlsx")
   surv <- read_excel("data/PromSurvivalOct24.xlsx", sheet = "YEARLY SURV")
   if(females){age <- read_csv("data/ageF.csv")}else{age <- read_csv("data/ageM.csv")}
   obs <- read_excel("data/PromObs_2008-2024.xlsx")
@@ -40,6 +41,20 @@ prepDataRK <- function(females = T){
   }else{
     surv <- surv %>% filter(Sex == 0) # males
   }
+  
+  
+  ## YAF survival data ---------------------------------------------------------
+  
+  yafs <- read_excel("data/RSmain_Jan26.xlsx")
+  
+  yafs <- yafs %>% 
+    mutate(Age = as.numeric(Age)) %>% 
+    filter(Exclude == 0,
+           between(Age, 3, 20) | is.na(Age),
+           # remove first born of "twins", often dropped at March capture
+           PYid != 308 & PYid != 340 & PYid != 672 & PYid != 885 & PYid != 900 &
+           PYid != 891 & PYid != 912 & PYid != 1023 & PYid != 1106) %>% 
+    select(Year, PYsex, PYid, SurvOct1, SurvOct2)
   
   
   ## Encounter history ---------------------------------------------------------
