@@ -17,7 +17,7 @@
 #'
 #' @examples
 
-compareModels <- function(nYear = 17,
+CompareModels <- function(nYear = 17,
                           minYear = 2008,
                           maxYear,
                           nAgeC = 5,

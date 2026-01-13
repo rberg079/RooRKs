@@ -548,7 +548,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-out.model <- "modelF_tObs_aVeg_atMR.rds"
+out.model <- "modelF_tObs_aVeg_atMR_dexp.rds"
 out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
@@ -677,10 +677,10 @@ coda::crosscorr.plot(out)
 ## Compare model outputs -------------------------------------------------------
 
 source('compareModels.R')
-CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR_obs.rds",
-                            "results/modelF_tObs_aVeg_atMR.rds"),
-              modelNames = c("modF_obs",
-                             "modF_og"),
-              plotFolder = c("figures/tweaks"),
+CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR.rds",
+                            "results/modelF_tObs_aVeg_atMR_dexp.rds"),
+              modelNames = c("modF_og",
+                             "modF_dexp"),
+              plotFolder = c("figures/simplifyREs"),
               returnSumData = TRUE)
 
