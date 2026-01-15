@@ -318,6 +318,12 @@ myCode <- nimbleCode({
   sigma.rR  ~ dexp(10)
   sigma.rO  ~ dexp(10)
   
+  # sigma.phi ~ dunif(0, 4)
+  # sigma.M   ~ dunif(0, 4)
+  # sigma.R   ~ dunif(0, 4)
+  # sigma.rR  ~ dunif(0, 4)
+  # sigma.rO  ~ dunif(0, 4)
+  
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.M   <- 1 / (sigma.M * sigma.M)
   tau.R   <- 1 / (sigma.R * sigma.R)
@@ -402,6 +408,11 @@ myInits <- list(
   sigma.R   = rexp(1, 10),
   sigma.rR  = rexp(1, 10),
   sigma.rO  = rexp(1, 10)
+  # sigma.phi = runif(1, 0, 4),
+  # sigma.M   = runif(1, 0, 4),
+  # sigma.R   = runif(1, 0, 4),
+  # sigma.rR  = runif(1, 0, 4),
+  # sigma.rO  = runif(1, 0, 4)
 )
 
 # Data
@@ -410,7 +421,7 @@ myData <- list(y = y,
                z = z_dat, 
                age = age,
                ageC = ageC,
-               obs = obs,
+               # obs = obs,
                veg = veg)
                # dens = dens
                # win = win

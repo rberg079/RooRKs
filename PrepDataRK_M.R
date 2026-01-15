@@ -1,14 +1,13 @@
 #' Prepare data for road mortality model
 #'
 #' @param females logical. If TRUE, data is prepped for female kangaroos only. females = TRUE by default.
-#' @param fromScratch logical. If TRUE, data is prepped from scratch, otherwise existing CSVs are loaded.
 #'
 #' @returns a list containing all data & constants needed for known-fate road mortality models.
 #' @export
 #'
 #' @examples
 
-prepDataRK <- function(females = T, fromScratch = T){
+prepDataRK <- function(females = T){
   
   # # for testing purposes
   # females = TRUE
@@ -204,7 +203,7 @@ prepDataRK <- function(females = T, fromScratch = T){
   
   eh <- eh %>% select(1:19)
   # write_csv(eh, "eh.csv")
-  remove(yafs, deadYAFs)
+  # remove(yafs, deadYAFs)
   
   # extract first & last
   # create vector with occasion of first capture
@@ -229,9 +228,9 @@ prepDataRK <- function(females = T, fromScratch = T){
   
   # age data
   age <- surv %>%
-    select(1,3,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38) %>%
-    mutate_at(vars(-ID, -Cohort), ~ifelse(.== "A", NA, .)) %>%
-    mutate_at(vars(-ID, -Cohort), ~as.numeric(.)) %>%
+    select(1,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38) %>%
+    mutate_at(vars(-ID), ~ifelse(.== "A", NA, .)) %>%
+    mutate_at(vars(-ID), ~as.numeric(.)) %>%
     mutate("2025" = as.numeric(NA)) %>%
     rename("2008" = "Age08", "2009" = "Age09", "2010" = "Age10",
            "2011" = "Age11", "2012" = "Age12", "2013" = "Age13",
@@ -239,8 +238,16 @@ prepDataRK <- function(females = T, fromScratch = T){
            "2017" = "Age17", "2018" = "Age18", "2019" = "Age19",
            "2020" = "Age20", "2021" = "Age21", "2022" = "Age22",
            "2023" = "Age23", "2024" = "Age24")
-
-  tmp <- age %>% select(3:20)
+  
+  yafs <- yafs %>% 
+    pivot_wider(names_from = Year, values_from = yafs) %>% 
+    mutate_at(vars(-ID), ~ifelse(!is.na(.), 1, NA)) %>% 
+    anti_join(age %>% select(ID), by = "ID") %>% 
+    mutate("2008" = NA) %>%
+    select(ID, "2008", everything())
+  
+  age <- bind_rows(age, yafs) %>% arrange(ID)
+  tmp <- age %>% select(2:19)
 
   for (j in 1:nrow(tmp)) {
     # forward fill
