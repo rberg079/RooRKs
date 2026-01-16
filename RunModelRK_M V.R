@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR_dexp.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_dexp_sum.txt"
+out.model <- "modelF_tObs_aVeg_atMR_phis.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_phis_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -87,18 +87,25 @@ list2env(dataRK, envir = .GlobalEnv)
 #       round(off.site / (on.site + off.site), 3), "\n")
 # }
 
-# table.obs <- table(factor(as.vector(y), levels = 1:5, exclude = NULL), useNA = "ifany")
-# print(table.obs)
+# table(y)
 # 
 # rk.count <- sum(y == 3, na.rm = T)
 # other.count <- sum(y == 4, na.rm = T)
-# cat("roadkill:", rk.count, "other death:", other.count, "\n")
-# cat("roadkill / (roadkill + other death):", rk.count / (rk.count + other.count), "/n")
+# cat("roadkill:", rk.count, "other death:", other.count)
+# cat("roadkill / (roadkill + other death):", rk.count / (rk.count + other.count))
 # 
 # on.site <- sum(y == 1, na.rm = T)
 # off.site <- sum(y == 2, na.rm = T)
-# cat("on-site:", on.site, "off-site:", off.site, "/n")
-# cat("off-site / (off-site + on-site):", off.site / (on.site + off.site), "/n")
+# cat("on-site:", on.site, "off-site:", off.site)
+# cat("off-site / (off-site + on-site):", off.site / (on.site + off.site))
+# 
+# nextObs <- y[cbind(seq_len(nrow(y)), first + 1)]
+# 
+# table(nextObs)
+# lived <- sum(nextObs == 1)
+# died <- sum(nextObs >= 2)
+# cat("YAFs that lived:", lived, "YAFs that died:", died, "\n")
+# cat("lived / (lived + died):", lived / (lived + died))
 
 
 ## Model -----------------------------------------------------------------------
@@ -127,7 +134,7 @@ myCode <- nimbleCode({
       eps.M[a, t]   ~ dnorm(0, tau.M)
       eps.R[a, t]   ~ dnorm(0, tau.R)
       
-      # logit-linear function of covariates
+      # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) + B.veg[a] * veg[t] + eps.phi[a, t]
       logit(mean.M[a, t])   <- logit(mu.M[a]) + eps.M[a, t]
       logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[a, t]
@@ -142,10 +149,14 @@ myCode <- nimbleCode({
   for (t in 1:n.occasions){
     
     # random year effects
+    eps.Pi[t] ~ dnorm(0, tau.Pi)
+    eps.Po[t] ~ dnorm(0, tau.Po)
     eps.rR[t] ~ dnorm(0, tau.rR)
     eps.rO[t] ~ dnorm(0, tau.rO)
     
-    # logit-linear function of covariates
+    # logit-linear functions
+    logit(mean.Pi[t]) <- logit(mu.Pi) + eps.Pi[t]
+    logit(mean.Po[t]) <- logit(mu.Po) + eps.Po[t]
     logit(mean.rR[t]) <- logit(mu.rR) + eps.rR[t] # + B.obsR * obs[t]
     logit(mean.rO[t]) <- logit(mu.rO) + eps.rO[t] # + B.obsO * obs[t]
     
@@ -283,50 +294,50 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   # # quick simulations
-  # hist(rbeta(1000, 8, 2))
-  # hist(rbeta(1000, 4, 4))
+  # hist(rbeta(1000, 8, 1))
+  # hist(rbeta(1000, 8, 8))
   # hist(rbeta(1000, 2, 8))
   # hist(rbeta(1000, 1, 8))
-  # hist(rbeta(1000, 1, 1))
+  # hist(rbeta(1000, 4, 4))
   
-  # mu.phi[1] ~ dbeta(4, 4)
-  # mu.phi[2] ~ dbeta(8, 2)
-  # mu.phi[3] ~ dbeta(8, 2)
-  # mu.phi[4] ~ dbeta(8, 2)
-  # mu.phi[5] ~ dbeta(4, 4)
+  # for (a in 1:n.ageC){
+  #   mu.phi[a] ~ dbeta(4, 4)
+  #   mu.M[a]   ~ dbeta(1, 8)
+  #   mu.R[a]   ~ dbeta(1, 8)
+  #   B.veg[a]  ~ dnorm(0, 1)
+  # } # a
   
-  for (a in 1:n.ageC){
-    mu.phi[a] ~ dbeta(4, 4)
-    mu.M[a]   ~ dbeta(1, 8)
-    mu.R[a]   ~ dbeta(1, 8)
-    B.veg[a]  ~ dnorm(0, 1)
-  } # a
+  mu.phi[1] ~ dbeta(8, 8)
+  mu.phi[2] ~ dbeta(8, 2)
+  mu.phi[3] ~ dbeta(8, 1)
+  mu.phi[4] ~ dbeta(8, 2)
+  mu.phi[5] ~ dbeta(8, 4)
   
-  for (t in 1:n.occasions){
-    mean.Pi[t] ~ dbeta(8, 1)
-    mean.Po[t] ~ dbeta(4, 4)
-  } # t
+  # for (t in 1:n.occasions){
+  #   mean.Pi[t] ~ dbeta(8, 1)
+  #   mean.Po[t] ~ dbeta(4, 4)
+  # } # t
   
-  mu.rR  ~ dbeta(4, 4)
-  mu.rO  ~ dbeta(4, 4)
+  mu.Pi ~ dbeta(8, 1)
+  mu.Po ~ dbeta(4, 4)
+  mu.rR ~ dbeta(4, 4)
+  mu.rO ~ dbeta(4, 4)
   # B.obsR ~ dnorm(0, 1)
   # B.obsO ~ dnorm(0, 1)
   
   sigma.phi ~ dexp(10)
   sigma.M   ~ dexp(10)
   sigma.R   ~ dexp(10)
+  sigma.Pi  ~ dexp(10)
+  sigma.Po  ~ dexp(10)
   sigma.rR  ~ dexp(10)
   sigma.rO  ~ dexp(10)
-  
-  # sigma.phi ~ dunif(0, 4)
-  # sigma.M   ~ dunif(0, 4)
-  # sigma.R   ~ dunif(0, 4)
-  # sigma.rR  ~ dunif(0, 4)
-  # sigma.rO  ~ dunif(0, 4)
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.M   <- 1 / (sigma.M * sigma.M)
   tau.R   <- 1 / (sigma.R * sigma.R)
+  tau.Pi  <- 1 / (sigma.Pi * sigma.Pi)
+  tau.Po  <- 1 / (sigma.Po * sigma.Po)
   tau.rR  <- 1 / (sigma.rR * sigma.rR)
   tau.rO  <- 1 / (sigma.rO * sigma.rO)
   
@@ -391,28 +402,27 @@ myInits <- list(
   mu.phi    = rbeta(n.ageC, 4, 4),
   mu.R      = rbeta(n.ageC, 1, 8),
   mu.M      = rbeta(n.ageC, 1, 8),
+  mu.Pi     = rbeta(1, 8, 1),
+  mu.Po     = rbeta(1, 4, 4),
   mu.rR     = rbeta(1, 4, 4),
   mu.rO     = rbeta(1, 4, 4),
-  mean.Pi   = rbeta(n.occasions, 8, 1),
-  mean.Po   = rbeta(n.occasions, 4, 4),
   B.veg     = rnorm(n.ageC, 0, 0.1),
   # B.obsR    = rnorm(1, 0, 0.1),
   # B.obsO    = rnorm(1, 0, 0.1),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.Pi    = rnorm(n.occasions, 0, 0.1),
+  eps.Po    = rnorm(n.occasions, 0, 0.1),
   eps.rR    = rnorm(n.occasions, 0, 0.1),
   eps.rO    = rnorm(n.occasions, 0, 0.1),
   sigma.phi = rexp(1, 10),
   sigma.M   = rexp(1, 10),
   sigma.R   = rexp(1, 10),
+  sigma.Pi  = rexp(1, 10),
+  sigma.Po  = rexp(1, 10),
   sigma.rR  = rexp(1, 10),
   sigma.rO  = rexp(1, 10)
-  # sigma.phi = runif(1, 0, 4),
-  # sigma.M   = runif(1, 0, 4),
-  # sigma.R   = runif(1, 0, 4),
-  # sigma.rR  = runif(1, 0, 4),
-  # sigma.rO  = runif(1, 0, 4)
 )
 
 # Data
@@ -432,10 +442,9 @@ myData <- list(y = y,
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
 params <- c("B.veg", # "B.obsR", "B.obsO",
-            "mean.phi", "mean.M", "mean.R",
-            "mu.phi", "mu.M", "mu.R", "mu.rR", "mu.rO",
-            "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "sigma.phi", "sigma.M", "sigma.R", "sigma.rR", "sigma.rO",
+            "mu.phi", "mu.M", "mu.R", "mu.Pi", "mu.Po", "mu.rR", "mu.rO",
+            "mean.phi", "mean.M", "mean.R", "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
+            "sigma.phi", "sigma.M", "sigma.R", "sigma.Pi", "sigma.Po", "sigma.rR", "sigma.rO",
             "veg")
 
 # Constants
@@ -550,8 +559,8 @@ MCMCdiag(out,
          obj_name = out.model,
          file_name = out.sum)
 
-# # TEMP
-# # which columns contain NAs
+# # IF NEEDED:
+# # which columns contain NAs?
 # library(coda)
 # post <- as.mcmc(do.call(rbind, out))
 # which(apply(post, 2, function(x) any(is.na(x) | is.nan(x))))
@@ -559,7 +568,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-out.model <- "modelF_tObs_aVeg_atMR_dexp.rds"
+out.model <- "modelF_tObs_aVeg_atMR_muPs.rds"
 out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
@@ -689,9 +698,11 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR.rds",
-                            "results/modelF_tObs_aVeg_atMR_dexp.rds"),
+                            "results/modelF_tObs_aVeg_atMR_dexp.rds",
+                            "results/modelF_tObs_aVeg_atMR_muPs.rds"),
               modelNames = c("modF_og",
-                             "modF_dexp"),
-              plotFolder = c("figures/simplifyREs"),
+                             "modF_dexp",
+                             "modF_muPs"),
+              plotFolder = c("figures/tweakREs&Ps"),
               returnSumData = TRUE)
 
