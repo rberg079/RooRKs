@@ -30,17 +30,15 @@ CompareModels <- function(nYear = 17,
   # nYear = 17
   # minYear = 2008
   # nAgeC = 5
-  # postPaths = c("results/modelF_tObs_aVeg_atMR.rds",
-  #               "results/modelF_tObs_aVeg_atMR_dexp.rds",
-  #               "results/modelF_tObs_aVeg_atMR_muPs.rds",
+  # postPaths = c("results/modelF_tObs_aVeg_atMR_muPs.rds",
   #               "results/modelF_tObs_aVeg_atMR_phis.rds",
-  #               "results/modelF_tObs_aVeg_atMR_noVeg.rds")
-  # modelNames = c("modF_og",
-  #                "modF_dexp",
-  #                "modF_muPs",
+  #               "results/modelF_tObs_aVeg_atMR_noCov.rds",
+  #               "results/modelF_tObs_aVeg_atMR_fixPi.rds")
+  # modelNames = c("modF_muPs",
   #                "modF_phis",
-  #                "modF_noVeg")
-  # plotFolder = c("figures/noVeg")
+  #                "modF_noCov",
+  #                "modF_fixPi")
+  # plotFolder = c("figures/fixPi")
   # returnSumData = TRUE
   
   
@@ -140,7 +138,7 @@ CompareModels <- function(nYear = 17,
   plot.D <- list(
     
     Survival = c(paste0("mu.phi[", plotAges, "]"),
-                 paste0("B.veg[", plotAges, "]"),
+                 # paste0("B.veg[", plotAges, "]"),
                  "sigma.phi"),
 
     Movement = c(paste0("mu.M[", plotAges, "]"),
@@ -153,9 +151,8 @@ CompareModels <- function(nYear = 17,
                     "sigma.Pi", "sigma.Po"),
     
     Recovery = c("mu.rR", "mu.rO",
+                 # "B.obsR", "B.obsO"
                  "sigma.rR", "sigma.rO"))
-    
-    # Covariates = c("B.veg", "B.obsR", "B.obsO"))
   
   
   # time series of vital rates
@@ -174,10 +171,6 @@ CompareModels <- function(nYear = 17,
                    'mean.Po',
                    'mean.rR',
                    'mean.rO'
-                   # params = paste0('mean.Pi[', plotYears, ']'),
-                   # params = paste0('mean.Po[', plotYears, ']'),
-                   # params = paste0('mean.rR[', plotYears, ']'),
-                   # params = paste0('mean.rO[', plotYears, ']')
                    ),
 
     ParamLabels = c('Survival probability (YAF)',
@@ -199,35 +192,6 @@ CompareModels <- function(nYear = 17,
                     'Detection (off-site)',
                     'Recovery (roadkill)',
                     'Recovery (other)')
-  
-    
-    # mean.phi = list(name = "Survival probability",
-    #                 params = expand.grid(a = plotAges, t = plotYears) %>%
-    #                   mutate(p = paste0("mean.phi[", a, ",", t, "]")) %>%
-    #                   pull(p)),
-    # 
-    # mean.M = list(name = "Movement probability",
-    #               params = expand.grid(a = plotAges, t = plotYears) %>%
-    #                 mutate(p = paste0("mean.M[", a, ",", t, "]")) %>%
-    #                 pull(p)),
-    # 
-    # mean.R = list(name = "Roadkill probability",
-    #               params = expand.grid(a = plotAges, t = plotYears) %>%
-    #                 mutate(p = paste0("mean.R[", a, ",", t, "]")) %>%
-    #                 pull(p)),
-    # 
-    # mean.Pi = list(name = "Detection (on-site)",
-    #                params = paste0("mean.Pi[", plotYears, "]")),
-    # 
-    # mean.Po = list(name = "Detection (off-site)",
-    #                params = paste0("mean.Po[", plotYears, "]")),
-    # 
-    # mean.rR = list(name = "Recovery (roadkill)",
-    #                params = paste0("mean.rR[", plotYears, "]")),
-    # 
-    # mean.rO = list(name = "Recovery (other)",
-    #                params = paste0("mean.rO[", plotYears, "]"))
-    
     )
   
   

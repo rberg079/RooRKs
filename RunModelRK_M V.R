@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR_noREonPI.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_noREonPI_sum.txt"
+out.model <- "modelF_tObs_aVeg_atMR_fixPI.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_fixPI_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -568,7 +568,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-out.model <- "modelF_tObs_aVeg_atMR_muPs.rds"
+out.model <- "modelF_tObs_aVeg_atMR_phis.rds"
 out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
@@ -697,18 +697,15 @@ coda::crosscorr.plot(out)
 ## Compare model outputs -------------------------------------------------------
 
 source('compareModels.R')
-CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR.rds",
-                            "results/modelF_tObs_aVeg_atMR_dexp.rds",
-                            "results/modelF_tObs_aVeg_atMR_muPs.rds",
+CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR_muPs.rds",
                             "results/modelF_tObs_aVeg_atMR_phis.rds",
                             "results/modelF_tObs_aVeg_atMR_noVeg.rds"
                             ),
-              modelNames = c("modF_og",
-                             "modF_dexp",
-                             "modF_muPs",
+              modelNames = c("modF_muPs",
                              "modF_phis",
-                             "modF_noVeg"
+                             "modF_noCov",
+                             "modF_fixPi"
                              ),
-              plotFolder = c("figures/noVeg"),
+              plotFolder = c("figures/fixPi"),
               returnSumData = TRUE)
 
