@@ -30,11 +30,17 @@ CompareModels <- function(nYear = 17,
   # nYear = 17
   # minYear = 2008
   # nAgeC = 5
-  # postPaths = c("results/modelF_tObs_aVeg_atMR_obs.rds",
-  #               "results/modelF_tObs_aVeg_atMR.rds")
-  # modelNames = c("modF_obs",
-  #                "modF_og")
-  # plotFolder = c("figures/tweaks")
+  # postPaths = c("results/modelF_tObs_aVeg_atMR.rds",
+  #               "results/modelF_tObs_aVeg_atMR_dexp.rds",
+  #               "results/modelF_tObs_aVeg_atMR_muPs.rds",
+  #               "results/modelF_tObs_aVeg_atMR_phis.rds",
+  #               "results/modelF_tObs_aVeg_atMR_noVeg.rds")
+  # modelNames = c("modF_og",
+  #                "modF_dexp",
+  #                "modF_muPs",
+  #                "modF_phis",
+  #                "modF_noVeg")
+  # plotFolder = c("figures/noVeg")
   # returnSumData = TRUE
   
   
@@ -143,9 +149,13 @@ CompareModels <- function(nYear = 17,
     Roadkill = c(paste0("mu.R[", plotAges, "]"),
                  "sigma.R"),
 
-    Observation = c("mu.rR", "mu.rO",
-                    "B.obsR", "B.obsO",
-                    "sigma.rR", "sigma.rO"))
+    Observation = c("mu.Pi", "mu.Po",
+                    "sigma.Pi", "sigma.Po"),
+    
+    Recovery = c("mu.rR", "mu.rO",
+                 "sigma.rR", "sigma.rO"))
+    
+    # Covariates = c("B.veg", "B.obsR", "B.obsO"))
   
   
   # time series of vital rates

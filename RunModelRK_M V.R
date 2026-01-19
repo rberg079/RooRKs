@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR_phis.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_phis_sum.txt"
+out.model <- "modelF_tObs_aVeg_atMR_noVeg.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_noVeg_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -115,10 +115,10 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  for (m in 1:nNoVeg){
-    veg[noVeg[m]] ~ dnorm(0, sd = 1)
-    # dens[noDens[m]] ~ dnorm(0, sd = 1)
-  } # m
+  # for (m in 1:nNoVeg){
+  #   veg[noVeg[m]] ~ dnorm(0, sd = 1)
+  #   # dens[noDens[m]] ~ dnorm(0, sd = 1)
+  # } # m
   
   # win[noWin] ~ dnorm(0, sd = 1)
   
@@ -135,7 +135,7 @@ myCode <- nimbleCode({
       eps.R[a, t]   ~ dnorm(0, tau.R)
       
       # logit-linear functions
-      logit(mean.phi[a, t]) <- logit(mu.phi[a]) + B.veg[a] * veg[t] + eps.phi[a, t]
+      logit(mean.phi[a, t]) <- logit(mu.phi[a]) + eps.phi[a, t] # + B.veg[a] * veg[t] 
       logit(mean.M[a, t])   <- logit(mu.M[a]) + eps.M[a, t]
       logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[a, t]
       
@@ -406,7 +406,7 @@ myInits <- list(
   mu.Po     = rbeta(1, 4, 4),
   mu.rR     = rbeta(1, 4, 4),
   mu.rO     = rbeta(1, 4, 4),
-  B.veg     = rnorm(n.ageC, 0, 0.1),
+  # B.veg     = rnorm(n.ageC, 0, 0.1),
   # B.obsR    = rnorm(1, 0, 0.1),
   # B.obsO    = rnorm(1, 0, 0.1),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
@@ -430,9 +430,9 @@ y[y == 999] <- NA
 myData <- list(y = y, 
                z = z_dat, 
                age = age,
-               ageC = ageC,
-               # obs = obs,
-               veg = veg)
+               ageC = ageC)
+               # obs = obs
+               # veg = veg
                # dens = dens
                # win = win
 
@@ -441,11 +441,11 @@ myData <- list(y = y,
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("B.veg", # "B.obsR", "B.obsO",
+params <- c(# "B.veg", "B.obsR", "B.obsO",
             "mu.phi", "mu.M", "mu.R", "mu.Pi", "mu.Po", "mu.rR", "mu.rO",
             "mean.phi", "mean.M", "mean.R", "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "sigma.phi", "sigma.M", "sigma.R", "sigma.Pi", "sigma.Po", "sigma.rR", "sigma.rO",
-            "veg")
+            "sigma.phi", "sigma.M", "sigma.R", "sigma.Pi", "sigma.Po", "sigma.rR", "sigma.rO")
+            # "veg"
 
 # Constants
 myConst <- list(n.inds = n.inds,
@@ -453,9 +453,9 @@ myConst <- list(n.inds = n.inds,
                 n.occasions = n.occasions,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
-                first = first,
-                noVeg = noVeg,
-                nNoVeg = nNoVeg)
+                first = first)
+                # noVeg = noVeg
+                # nNoVeg = nNoVeg
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
@@ -699,10 +699,16 @@ coda::crosscorr.plot(out)
 source('compareModels.R')
 CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR.rds",
                             "results/modelF_tObs_aVeg_atMR_dexp.rds",
-                            "results/modelF_tObs_aVeg_atMR_muPs.rds"),
+                            "results/modelF_tObs_aVeg_atMR_muPs.rds",
+                            "results/modelF_tObs_aVeg_atMR_phis.rds",
+                            "results/modelF_tObs_aVeg_atMR_noVeg.rds"
+                            ),
               modelNames = c("modF_og",
                              "modF_dexp",
-                             "modF_muPs"),
-              plotFolder = c("figures/tweakREs&Ps"),
+                             "modF_muPs",
+                             "modF_phis",
+                             "modF_noVeg"
+                             ),
+              plotFolder = c("figures/noVeg"),
               returnSumData = TRUE)
 
