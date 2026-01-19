@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR_noVeg.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_noVeg_sum.txt"
+out.model <- "modelF_tObs_aVeg_atMR_noREonPI.rds"
+out.sum <- "modelF_tObs_aVeg_atMR_noREonPI_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -294,10 +294,10 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   # # quick simulations
-  # hist(rbeta(1000, 8, 1))
   # hist(rbeta(1000, 8, 8))
-  # hist(rbeta(1000, 2, 8))
-  # hist(rbeta(1000, 1, 8))
+  # hist(rbeta(1000, 12, 2))
+  # hist(rbeta(1000, 18, 2))
+  # hist(rbeta(1000, 8, 4))
   # hist(rbeta(1000, 4, 4))
   
   # for (a in 1:n.ageC){
@@ -307,10 +307,10 @@ myCode <- nimbleCode({
   #   B.veg[a]  ~ dnorm(0, 1)
   # } # a
   
-  mu.phi[1] ~ dbeta(8, 8)
-  mu.phi[2] ~ dbeta(8, 2)
-  mu.phi[3] ~ dbeta(8, 1)
-  mu.phi[4] ~ dbeta(8, 2)
+  mu.phi[1] ~ dbeta(4, 4)
+  mu.phi[2] ~ dbeta(12, 2)
+  mu.phi[3] ~ dbeta(18, 2)
+  mu.phi[4] ~ dbeta(12, 2)
   mu.phi[5] ~ dbeta(8, 4)
   
   # for (t in 1:n.occasions){
@@ -318,7 +318,7 @@ myCode <- nimbleCode({
   #   mean.Po[t] ~ dbeta(4, 4)
   # } # t
   
-  mu.Pi ~ dbeta(8, 1)
+  mu.Pi ~ dbeta(98, 2) # based on Ecology paper
   mu.Po ~ dbeta(4, 4)
   mu.rR ~ dbeta(4, 4)
   mu.rO ~ dbeta(4, 4)
@@ -328,7 +328,7 @@ myCode <- nimbleCode({
   sigma.phi ~ dexp(10)
   sigma.M   ~ dexp(10)
   sigma.R   ~ dexp(10)
-  sigma.Pi  ~ dexp(10)
+  sigma.Pi  <- 0 # based on Ecology paper
   sigma.Po  ~ dexp(10)
   sigma.rR  ~ dexp(10)
   sigma.rO  ~ dexp(10)
