@@ -150,9 +150,9 @@ CompareModels <- function(nYear = 17,
     Observation = c("mu.Pi", "mu.Po",
                     "sigma.Pi", "sigma.Po"),
     
-    Recovery = c("mu.rR", "mu.rO",
+    Recovery = c("mu.rR", "mu.rO", "mu.r",
                  # "B.obsR", "B.obsO"
-                 "sigma.rR", "sigma.rO"))
+                 "sigma.rR", "sigma.rO", "sigma.r"))
   
   
   # time series of vital rates
