@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVeg_atMR_fixPI.rds"
-out.sum <- "modelF_tObs_aVeg_atMR_fixPI_sum.txt"
+out.model <- "modelF_tObs_atMR_noYAF.rds"
+out.sum <- "modelF_tObs_atMR_noYAF_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -151,14 +151,18 @@ myCode <- nimbleCode({
     # random year effects
     eps.Pi[t] ~ dnorm(0, tau.Pi)
     eps.Po[t] ~ dnorm(0, tau.Po)
-    eps.rR[t] ~ dnorm(0, tau.rR)
-    eps.rO[t] ~ dnorm(0, tau.rO)
+    eps.r[t]  ~ dnorm(0, tau.r)
+    
+    # eps.rR[t] ~ dnorm(0, tau.rR)
+    # eps.rO[t] ~ dnorm(0, tau.rO)
     
     # logit-linear functions
     logit(mean.Pi[t]) <- logit(mu.Pi) + eps.Pi[t]
     logit(mean.Po[t]) <- logit(mu.Po) + eps.Po[t]
-    logit(mean.rR[t]) <- logit(mu.rR) + eps.rR[t] # + B.obsR * obs[t]
-    logit(mean.rO[t]) <- logit(mu.rO) + eps.rO[t] # + B.obsO * obs[t]
+    logit(mean.r[t])  <- logit(mu.r) + eps.r[t]
+    
+    # logit(mean.rR[t]) <- logit(mu.rR) + eps.rR[t] # + B.obsR * obs[t]
+    # logit(mean.rO[t]) <- logit(mu.rO) + eps.rO[t] # + B.obsO * obs[t]
     
   } # t
   
@@ -241,8 +245,10 @@ myCode <- nimbleCode({
       
       Pi[i,t] <- mean.Pi[t]  # observation on-site
       Po[i,t] <- mean.Po[t]  # observation off-site
-      rR[i,t] <- mean.rR[t]  # recovery of roadkill
-      rO[i,t] <- mean.rO[t]  # recovery of other death
+      r[i,t]  <- mean.r[t]   # recovery
+      
+      # rR[i,t] <- mean.rR[t]  # recovery of roadkill
+      # rO[i,t] <- mean.rO[t]  # recovery of other death
       
       #### Observation matrix ####
       # 1 - seen on-site
@@ -268,7 +274,7 @@ myCode <- nimbleCode({
       # RECOVERED ROADKILL
       obs.mat[i,1,3,t] <- 0
       obs.mat[i,2,3,t] <- 0
-      obs.mat[i,3,3,t] <- rR[i,t]
+      obs.mat[i,3,3,t] <- r[i,t]
       obs.mat[i,4,3,t] <- 0
       obs.mat[i,5,3,t] <- 0
       
@@ -276,14 +282,14 @@ myCode <- nimbleCode({
       obs.mat[i,1,4,t] <- 0
       obs.mat[i,2,4,t] <- 0
       obs.mat[i,3,4,t] <- 0
-      obs.mat[i,4,4,t] <- rO[i,t]
+      obs.mat[i,4,4,t] <- r[i,t]
       obs.mat[i,5,4,t] <- 0
       
       # UNDETECTED
       obs.mat[i,1,5,t] <- 1-Pi[i,t]
       obs.mat[i,2,5,t] <- 1-Po[i,t]
-      obs.mat[i,3,5,t] <- 1-rR[i,t]
-      obs.mat[i,4,5,t] <- 1-rO[i,t]
+      obs.mat[i,3,5,t] <- 1-r[i,t]
+      obs.mat[i,4,5,t] <- 1-r[i,t]
       obs.mat[i,5,5,t] <- 1
       
     } # t
@@ -294,52 +300,55 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   # # quick simulations
-  # hist(rbeta(1000, 8, 8))
+  # hist(rbeta(1000, 8, 2))
   # hist(rbeta(1000, 12, 2))
   # hist(rbeta(1000, 18, 2))
   # hist(rbeta(1000, 8, 4))
   # hist(rbeta(1000, 4, 4))
   
   # for (a in 1:n.ageC){
-  #   mu.phi[a] ~ dbeta(4, 4)
-  #   mu.M[a]   ~ dbeta(1, 8)
-  #   mu.R[a]   ~ dbeta(1, 8)
   #   B.veg[a]  ~ dnorm(0, 1)
   # } # a
   
-  mu.phi[1] ~ dbeta(4, 4)
-  mu.phi[2] ~ dbeta(12, 2)
-  mu.phi[3] ~ dbeta(18, 2)
-  mu.phi[4] ~ dbeta(12, 2)
-  mu.phi[5] ~ dbeta(8, 4)
+  # informative priors on survival
+  # based on CJS models in Ecology paper
+  # mu.phi[1] ~ dbeta(4, 4) # if 1 is YAF
+  mu.phi[1] ~ dbeta(8, 2)   # if 1 is 1 year-old subadults
+  mu.phi[2] ~ dbeta(8, 2)   # 2 year-old subadults
+  mu.phi[3] ~ dbeta(8, 2)   # prime-aged adults
+  mu.phi[4] ~ dbeta(8, 2)   # pre-senescent
+  mu.phi[5] ~ dbeta(8, 4)   # senescent
   
-  # for (t in 1:n.occasions){
-  #   mean.Pi[t] ~ dbeta(8, 1)
-  #   mean.Po[t] ~ dbeta(4, 4)
-  # } # t
-  
-  mu.Pi ~ dbeta(98, 2) # based on Ecology paper
+  # Pi known to be extremely high &
+  # to vary little from Ecology paper
+  mu.Pi ~ dbeta(98, 2)
   mu.Po ~ dbeta(4, 4)
-  mu.rR ~ dbeta(4, 4)
-  mu.rO ~ dbeta(4, 4)
+  mu.r  ~ dbeta(4, 4)
+  
+  # mu.rR ~ dbeta(4, 4)
+  # mu.rO ~ dbeta(4, 4)
   # B.obsR ~ dnorm(0, 1)
   # B.obsO ~ dnorm(0, 1)
   
   sigma.phi ~ dexp(10)
   sigma.M   ~ dexp(10)
   sigma.R   ~ dexp(10)
-  sigma.Pi  <- 0 # based on Ecology paper
+  sigma.Pi  <- 0
   sigma.Po  ~ dexp(10)
-  sigma.rR  ~ dexp(10)
-  sigma.rO  ~ dexp(10)
+  sigma.r   ~ dexp(10)
+  
+  # sigma.rR  ~ dexp(10)
+  # sigma.rO  ~ dexp(10)
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.M   <- 1 / (sigma.M * sigma.M)
   tau.R   <- 1 / (sigma.R * sigma.R)
   tau.Pi  <- 1 / (sigma.Pi * sigma.Pi)
   tau.Po  <- 1 / (sigma.Po * sigma.Po)
-  tau.rR  <- 1 / (sigma.rR * sigma.rR)
-  tau.rO  <- 1 / (sigma.rO * sigma.rO)
+  tau.r   <- 1 / (sigma.r  * sigma.r)
+  
+  # tau.rR  <- 1 / (sigma.rR * sigma.rR)
+  # tau.rO  <- 1 / (sigma.rO * sigma.rO)
   
 }) # nimbleCode
 
@@ -399,13 +408,14 @@ z_dat <- ZZs$z_dat
 # Inits
 myInits <- list(
   z         = z_inits,
-  mu.phi    = rbeta(n.ageC, 4, 4),
+  mu.phi    = rbeta(n.ageC, 8, 4),
   mu.R      = rbeta(n.ageC, 1, 8),
   mu.M      = rbeta(n.ageC, 1, 8),
   mu.Pi     = rbeta(1, 8, 1),
   mu.Po     = rbeta(1, 4, 4),
-  mu.rR     = rbeta(1, 4, 4),
-  mu.rO     = rbeta(1, 4, 4),
+  mu.r      = rbeta(1, 4, 4),
+  # mu.rR     = rbeta(1, 4, 4),
+  # mu.rO     = rbeta(1, 4, 4),
   # B.veg     = rnorm(n.ageC, 0, 0.1),
   # B.obsR    = rnorm(1, 0, 0.1),
   # B.obsO    = rnorm(1, 0, 0.1),
@@ -414,15 +424,17 @@ myInits <- list(
   eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.Pi    = rnorm(n.occasions, 0, 0.1),
   eps.Po    = rnorm(n.occasions, 0, 0.1),
-  eps.rR    = rnorm(n.occasions, 0, 0.1),
-  eps.rO    = rnorm(n.occasions, 0, 0.1),
+  eps.r     = rnorm(n.occasions, 0, 0.1),
+  # eps.rR    = rnorm(n.occasions, 0, 0.1),
+  # eps.rO    = rnorm(n.occasions, 0, 0.1),
   sigma.phi = rexp(1, 10),
   sigma.M   = rexp(1, 10),
   sigma.R   = rexp(1, 10),
   sigma.Pi  = rexp(1, 10),
   sigma.Po  = rexp(1, 10),
-  sigma.rR  = rexp(1, 10),
-  sigma.rO  = rexp(1, 10)
+  sigma.r   = rexp(1, 10)
+  # sigma.rR  = rexp(1, 10),
+  # sigma.rO  = rexp(1, 10)
 )
 
 # Data
@@ -442,9 +454,9 @@ myData <- list(y = y,
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
 params <- c(# "B.veg", "B.obsR", "B.obsO",
-            "mu.phi", "mu.M", "mu.R", "mu.Pi", "mu.Po", "mu.rR", "mu.rO",
-            "mean.phi", "mean.M", "mean.R", "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-            "sigma.phi", "sigma.M", "sigma.R", "sigma.Pi", "sigma.Po", "sigma.rR", "sigma.rO")
+            "mu.phi", "mu.M", "mu.R", "mu.Pi", "mu.Po", "mu.r", # "mu.rR", "mu.rO",
+            "mean.phi", "mean.M", "mean.R", "mean.Pi", "mean.Po", "mean.r", # "mean.rR", "mean.rO",
+            "sigma.phi", "sigma.M", "sigma.R", "sigma.Pi", "sigma.Po", "sigma.r") # "sigma.rR", "sigma.rO"
             # "veg"
 
 # Constants
@@ -568,8 +580,8 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-out.model <- "modelF_tObs_aVeg_atMR_phis.rds"
-out <- readRDS(paste0("results/", out.model))
+# out.model <- "modelF_tObs_aVeg_atMR_phis.rds"
+# out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
@@ -595,7 +607,7 @@ model.summary
 
 # Posterior means vs year
 years <- (1:n.occasions) + 2007
-ageCs <- c("YAF", "1-2", "3-6", "7-9", "10+")
+ageCs <- c("1", "2", "3-6", "7-9", "10+")
 
 mcmc.df <- out %>% 
   map(~as.data.frame(as.matrix(.x))) %>% 
@@ -697,15 +709,16 @@ coda::crosscorr.plot(out)
 ## Compare model outputs -------------------------------------------------------
 
 source('compareModels.R')
-CompareModels(postPaths = c("results/modelF_tObs_aVeg_atMR_muPs.rds",
-                            "results/modelF_tObs_aVeg_atMR_phis.rds",
-                            "results/modelF_tObs_aVeg_atMR_noVeg.rds"
+CompareModels(postPaths = c("results/modelF_tObs_atMR_noCov.rds",
+                            "results/modelF_tObs_atMR_fixPi.rds",
+                            "results/modelF_tObs_atMR_oner.rds",
+                            "results/modelF_tObs_atMR_noYAF.rds"
                             ),
-              modelNames = c("modF_muPs",
-                             "modF_phis",
-                             "modF_noCov",
-                             "modF_fixPi"
+              modelNames = c("modF_noCov",
+                             "modF_fixPi",
+                             "modF_oner",
+                             "modF_noYAF"
                              ),
-              plotFolder = c("figures/fixPi"),
+              plotFolder = c("figures/noYAFs"),
               returnSumData = TRUE)
 
