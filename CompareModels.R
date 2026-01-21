@@ -169,6 +169,7 @@ CompareModels <- function(nYear = 17,
                      pull(param),
                    'mean.Pi',
                    'mean.Po',
+                   'mean.r',
                    'mean.rR',
                    'mean.rO'
                    ),
@@ -190,6 +191,7 @@ CompareModels <- function(nYear = 17,
                     'Roadkill probability (10+)',
                     'Detection (on-site)',
                     'Detection (off-site)',
+                    'Recovery (overall)',
                     'Recovery (roadkill)',
                     'Recovery (other)')
     )
