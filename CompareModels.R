@@ -30,15 +30,15 @@ CompareModels <- function(nYear = 17,
   # nYear = 17
   # minYear = 2008
   # nAgeC = 5
-  # postPaths = c("results/modelF_tObs_aVeg_atMR_muPs.rds",
-  #               "results/modelF_tObs_aVeg_atMR_phis.rds",
-  #               "results/modelF_tObs_aVeg_atMR_noCov.rds",
-  #               "results/modelF_tObs_aVeg_atMR_fixPi.rds")
-  # modelNames = c("modF_muPs",
-  #                "modF_phis",
-  #                "modF_noCov",
-  #                "modF_fixPi")
-  # plotFolder = c("figures/fixPi")
+  # postPaths = c("results/modelF_tObs_atMR_noYAF.rds",
+  #               "results/modelF_tObs_atMR_oner.rds",
+  #               "results/modelF_tObs_atMR_noPiRE.rds",
+  #               "results/modelF_tObs_atMR_noREs.rds")
+  # modelNames = c("modF_noYAF",
+  #                "modF_oner",
+  #                "modF_noPiRE",
+  #                "modF_noREs")
+  # plotFolder = c("figures/noREonPo&r")
   # returnSumData = TRUE
   
   
@@ -117,7 +117,7 @@ CompareModels <- function(nYear = 17,
                            # Parameter %in% c("mean.phi", "mean.M", "mean.R", "mu.phi", "mu.M", "mu.R", "B.veg") ~ Idx1,
                            TRUE ~ NA_real_),
            
-           Year = case_when(grepl('mean.Pi|mean.Po|mean.rR|mean.rO|veg', Parameter) ~ Idx1,
+           Year = case_when(grepl('mean.Pi|mean.Po|mean.rR|mean.rO|mean.r|veg', Parameter) ~ Idx1,
                             grepl('mean.phi|mean.M|mean.R', Parameter) ~ Idx2,
                             # Parameter %in% c("mean.phi", "mean.M", "mean.R") ~ Idx2,
                             # Parameter %in% c("mean.Pi", "mean.Po", "mean.rR", "mean.rO", "veg") ~ Idx1,

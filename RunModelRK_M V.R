@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_atMR_oner.rds"
-out.sum <- "modelF_tObs_atMR_oner_sum.txt"
+out.model <- "modelF_tObs_atMR_noREs.rds"
+out.sum <- "modelF_tObs_atMR_noREs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -149,14 +149,14 @@ myCode <- nimbleCode({
   for (t in 1:n.occasions){
     
     # random year effects
-    eps.Pi[t] ~ dnorm(0, tau.Pi)
-    eps.Po[t] ~ dnorm(0, tau.Po)
-    eps.r[t]  ~ dnorm(0, tau.r)
+    # eps.Pi[t] ~ dnorm(0, tau.Pi)
+    # eps.Po[t] ~ dnorm(0, tau.Po)
+    # eps.r[t]  ~ dnorm(0, tau.r)
     
     # logit-linear functions
-    logit(mean.Pi[t]) <- logit(mu.Pi) + eps.Pi[t]
-    logit(mean.Po[t]) <- logit(mu.Po) + eps.Po[t]
-    logit(mean.r[t])  <- logit(mu.r) + eps.r[t]
+    logit(mean.Pi[t]) <- logit(mu.Pi) # + eps.Pi[t]
+    logit(mean.Po[t]) <- logit(mu.Po) # + eps.Po[t]
+    logit(mean.r[t])  <- logit(mu.r) # + eps.r[t]
     
   } # t
   
@@ -322,16 +322,16 @@ myCode <- nimbleCode({
   sigma.phi ~ dexp(10)
   sigma.M   ~ dexp(10)
   sigma.R   ~ dexp(10)
-  sigma.Pi  ~ dexp(10)
-  sigma.Po  ~ dexp(10)
-  sigma.r   ~ dexp(10)
+  # sigma.Pi  ~ dexp(10)
+  # sigma.Po  ~ dexp(10)
+  # sigma.r   ~ dexp(10)
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.M   <- 1 / (sigma.M * sigma.M)
   tau.R   <- 1 / (sigma.R * sigma.R)
-  tau.Pi  <- 1 / (sigma.Pi * sigma.Pi)
-  tau.Po  <- 1 / (sigma.Po * sigma.Po)
-  tau.r   <- 1 / (sigma.r  * sigma.r)
+  # tau.Pi  <- 1 / (sigma.Pi * sigma.Pi)
+  # tau.Po  <- 1 / (sigma.Po * sigma.Po)
+  # tau.r   <- 1 / (sigma.r  * sigma.r)
   
 }) # nimbleCode
 
@@ -401,15 +401,15 @@ myInits <- list(
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
-  eps.Pi    = rnorm(n.occasions, 0, 0.1),
-  eps.Po    = rnorm(n.occasions, 0, 0.1),
-  eps.r     = rnorm(n.occasions, 0, 0.1),
+  # eps.Pi    = rnorm(n.occasions, 0, 0.1),
+  # eps.Po    = rnorm(n.occasions, 0, 0.1),
+  # eps.r     = rnorm(n.occasions, 0, 0.1),
   sigma.phi = rexp(1, 10),
   sigma.M   = rexp(1, 10),
-  sigma.R   = rexp(1, 10),
-  sigma.Pi  = rexp(1, 10),
-  sigma.Po  = rexp(1, 10),
-  sigma.r   = rexp(1, 10)
+  sigma.R   = rexp(1, 10)
+  # sigma.Pi  = rexp(1, 10),
+  # sigma.Po  = rexp(1, 10),
+  # sigma.r   = rexp(1, 10)
 )
 
 # Data
@@ -431,7 +431,7 @@ myData <- list(y = y,
 params <- c(# "B.veg", "veg", "B.obsR", "B.obsO",
             "mu.phi", "mu.M", "mu.R", "mu.Pi", "mu.Po", "mu.r",
             "mean.phi", "mean.M", "mean.R", "mean.Pi", "mean.Po", "mean.r",
-            "sigma.phi", "sigma.M", "sigma.R", "sigma.Pi", "sigma.Po", "sigma.r")
+            "sigma.phi", "sigma.M", "sigma.R") # "sigma.Pi", "sigma.Po", "sigma.r"
 
 # Constants
 myConst <- list(n.inds = n.inds,
@@ -450,15 +450,15 @@ myConst <- list(n.inds = n.inds,
 
 # MCMC settings
 if(testRun){
-  nburn   <- 0            # burn-in
-  niter   <- 10           # iterations
-  nthin   <- 1            # thinning
-  nchains <- 3            # chains
+  nburn   <- 0             # burn-in
+  niter   <- 10            # iterations
+  nthin   <- 1             # thinning
+  nchains <- 3             # chains
 }else{
-  nburn   <- 5000         # burn-in
-  niter   <- 5000 + nburn # iterations
-  nthin   <- 1            # thinning
-  nchains <- 3            # chains
+  nburn   <- 10000         # burn-in
+  niter   <- 10000 + nburn # iterations
+  nthin   <- 1             # thinning
+  nchains <- 3             # chains
 }
 
 
@@ -684,21 +684,17 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c(
-  "results/modelF_tObs_aVeg_atMR_phis.rds",
-  "results/modelF_tObs_atMR_noCov.rds",
   "results/modelF_tObs_atMR_noYAF.rds",
-  "results/modelF_tObs_atMR_oner.rds"
-  # "results/modelF_tObs_atMR_noPiRE.rds"
-  # "results/modelF_tObs_atMR_noREs.rds"
+  "results/modelF_tObs_atMR_oner.rds",
+  "results/modelF_tObs_atMR_noPiRE.rds",
+  "results/modelF_tObs_atMR_noREs.rds"
 ),
 modelNames = c(
-  "modF_phis",
-  "modF_noCov",
   "modF_noYAF",
-  "modF_oner"
-  # "modF_noPiRE"
-  # "modF_noREs"
+  "modF_oner",
+  "modF_noPiRE",
+  "modF_noREs"
 ),
-plotFolder = c("figures/oneRecovery"),
+plotFolder = c("figures/noREonPo&r"),
 returnSumData = TRUE)
 
