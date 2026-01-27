@@ -60,33 +60,6 @@ list2env(dataRK, envir = .GlobalEnv)
 
 ## Raw data checks -------------------------------------------------------------
 
-# sex_labels <- c("0" = "Male", "1" = "Female")
-# 
-# for(s in 0:1){
-#   cat("\n", sex_labels[as.character(s)], "\n")
-#   
-#   # Subset y for that sex
-#   y.s <- y[sex == s, ]
-#   
-#   # 1. Observation frequencies
-#   cat("\nObservation frequencies:\n")
-#   print(table(as.vector(y.s), useNA = "ifany"))
-#   
-#   # 2. Roadkill vs. other mortality
-#   rk.count <- sum(y.s == 3, na.rm = TRUE)
-#   other.count <- sum(y.s == 4, na.rm = TRUE)
-#   cat("\nroadkill:", rk.count, "other death:", other.count, "\n")
-#   cat("roadkill / (roadkill + other death):",
-#       round(rk.count / (rk.count + other.count), 3), "\n")
-#   
-#   # 3. On-site vs. off-site
-#   on.site <- sum(y.s == 1, na.rm = TRUE)
-#   off.site <- sum(y.s == 2, na.rm = TRUE)
-#   cat("\non-site:", on.site, "off-site:", off.site, "\n")
-#   cat("off-site / (off-site + on-site):",
-#       round(off.site / (on.site + off.site), 3), "\n")
-# }
-
 # table(y)
 # 
 # rk.count <- sum(y == 3, na.rm = T)
