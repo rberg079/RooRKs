@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_atMR_tREsMR.rds"
-out.sum <- "modelF_tObs_atMR_tREsMR_sum.txt"
+out.model <- "modelF_tObs_atMR_tREs.rds"
+out.sum <- "modelF_tObs_atMR_tREs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -103,12 +103,12 @@ myCode <- nimbleCode({
     for (t in 1:(n.occasions-1)){
       
       # random year effect
-      eps.phi[a, t] ~ dnorm(0, tau.phi)
+      eps.phi[t] ~ dnorm(0, tau.phi)
       eps.M[t]   ~ dnorm(0, tau.M)
       eps.R[t]   ~ dnorm(0, tau.R)
       
       # logit-linear functions
-      logit(mean.phi[a, t]) <- logit(mu.phi[a]) + eps.phi[a, t] # + B.veg[a] * veg[t] 
+      logit(mean.phi[a, t]) <- logit(mu.phi[a]) + eps.phi[t] # + B.veg[a] * veg[t] 
       logit(mean.M[a, t])   <- logit(mu.M[a]) + eps.M[t]
       logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[t]
       
@@ -371,9 +371,10 @@ myInits <- list(
   mu.Po     = rbeta(1, 4, 4),
   mu.r      = rbeta(1, 4, 4),
   # B.veg     = rnorm(n.ageC, 0, 0.1),
-  eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  # eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   # eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   # eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.phi   = rnorm(n.occasions, 0, 0.1),
   eps.M     = rnorm(n.occasions, 0, 0.1),
   eps.R     = rnorm(n.occasions, 0, 0.1),
   # eps.Pi    = rnorm(n.occasions, 0, 0.1),
@@ -659,17 +660,19 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c(
-  "results/modelF_tObs_atMR_noYAF.rds",
   "results/modelF_tObs_atMR_oner.rds",
   "results/modelF_tObs_atMR_noPiRE.rds",
-  "results/modelF_tObs_atMR_noREs.rds"
+  "results/modelF_tObs_atMR_noREs.rds",
+  "results/modelF_tObs_atMR_tREsMR.rds",
+  "results/modelF_tObs_atMR_tREs.rds"
 ),
 modelNames = c(
-  "modF_noYAF",
   "modF_oner",
   "modF_noPiRE",
-  "modF_noREs"
+  "modF_noREs",
+  "modF_tREsMR",
+  "modF_tREs"
 ),
-plotFolder = c("figures/noREonPo&r"),
+plotFolder = c("figures/11.noAgedREs"),
 returnSumData = TRUE)
 

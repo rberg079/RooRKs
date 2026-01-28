@@ -30,17 +30,17 @@ CompareModels <- function(nYear = 17,
   # nYear = 17
   # minYear = 2008
   # nAgeC = 5
-  # postPaths = c("results/modelF_tObs_atMR_noYAF.rds",
-  #               "results/modelF_tObs_atMR_oner.rds",
+  # postPaths = c("results/modelF_tObs_atMR_oner.rds",
   #               "results/modelF_tObs_atMR_noPiRE.rds",
   #               "results/modelF_tObs_atMR_noREs.rds",
-  #               "results/modelF_tObs_atMR_tREsMR.rds")
-  # modelNames = c("modF_noYAF",
-  #                "modF_oner",
+  #               "results/modelF_tObs_atMR_tREsMR.rds",
+  #               "results/modelF_tObs_atMR_tREs.rds")
+  # modelNames = c("modF_oner",
   #                "modF_noPiRE",
   #                "modF_noREs",
-  #                "modF_tREsMR")
-  # plotFolder = c("figures/10.noAgedREonMR")
+  #                "modF_tREsMR",
+  #                "modF_tREs")
+  # plotFolder = c("figures/11.noAgedREs")
   # returnSumData = TRUE
   
   
@@ -171,9 +171,7 @@ CompareModels <- function(nYear = 17,
                      pull(param),
                    'mean.Pi',
                    'mean.Po',
-                   'mean.r',
-                   'mean.rR',
-                   'mean.rO'
+                   'mean.r'
                    ),
 
     ParamLabels = c('Survival probability (YAF)',
@@ -193,9 +191,7 @@ CompareModels <- function(nYear = 17,
                     'Roadkill probability (10+)',
                     'Detection (on-site)',
                     'Detection (off-site)',
-                    'Recovery (overall)',
-                    'Recovery (roadkill)',
-                    'Recovery (other)')
+                    'Recovery (overall)')
     )
   
   
