@@ -33,12 +33,14 @@ CompareModels <- function(nYear = 17,
   # postPaths = c("results/modelF_tObs_atMR_noYAF.rds",
   #               "results/modelF_tObs_atMR_oner.rds",
   #               "results/modelF_tObs_atMR_noPiRE.rds",
-  #               "results/modelF_tObs_atMR_noREs.rds")
+  #               "results/modelF_tObs_atMR_noREs.rds",
+  #               "results/modelF_tObs_atMR_tREsMR.rds")
   # modelNames = c("modF_noYAF",
   #                "modF_oner",
   #                "modF_noPiRE",
-  #                "modF_noREs")
-  # plotFolder = c("figures/noREonPo&r")
+  #                "modF_noREs",
+  #                "modF_tREsMR")
+  # plotFolder = c("figures/10.noAgedREonMR")
   # returnSumData = TRUE
   
   

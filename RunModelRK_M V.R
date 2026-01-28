@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_atMR_noREs.rds"
-out.sum <- "modelF_tObs_atMR_noREs_sum.txt"
+out.model <- "modelF_tObs_atMR_tREsMR.rds"
+out.sum <- "modelF_tObs_atMR_tREsMR_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -104,13 +104,13 @@ myCode <- nimbleCode({
       
       # random year effect
       eps.phi[a, t] ~ dnorm(0, tau.phi)
-      eps.M[a, t]   ~ dnorm(0, tau.M)
-      eps.R[a, t]   ~ dnorm(0, tau.R)
+      eps.M[t]   ~ dnorm(0, tau.M)
+      eps.R[t]   ~ dnorm(0, tau.R)
       
       # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) + eps.phi[a, t] # + B.veg[a] * veg[t] 
-      logit(mean.M[a, t])   <- logit(mu.M[a]) + eps.M[a, t]
-      logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[a, t]
+      logit(mean.M[a, t])   <- logit(mu.M[a]) + eps.M[t]
+      logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[t]
       
     } # t
   } # a
@@ -372,8 +372,10 @@ myInits <- list(
   mu.r      = rbeta(1, 4, 4),
   # B.veg     = rnorm(n.ageC, 0, 0.1),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
-  eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
-  eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  # eps.M     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  # eps.R     = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.M     = rnorm(n.occasions, 0, 0.1),
+  eps.R     = rnorm(n.occasions, 0, 0.1),
   # eps.Pi    = rnorm(n.occasions, 0, 0.1),
   # eps.Po    = rnorm(n.occasions, 0, 0.1),
   # eps.r     = rnorm(n.occasions, 0, 0.1),
