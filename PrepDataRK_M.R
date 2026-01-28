@@ -10,7 +10,7 @@
 prepDataRK <- function(females = T){
   
   # # for testing purposes
-  # females = TRUE
+  # females = FALSE
   
   library(readxl)
   library(tidyverse)
