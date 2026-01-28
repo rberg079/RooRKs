@@ -30,17 +30,25 @@ CompareModels <- function(nYear = 17,
   # nYear = 17
   # minYear = 2008
   # nAgeC = 5
-  # postPaths = c("results/modelF_tObs_atMR_oner.rds",
-  #               "results/modelF_tObs_atMR_noPiRE.rds",
-  #               "results/modelF_tObs_atMR_noREs.rds",
-  #               "results/modelF_tObs_atMR_tREsMR.rds",
-  #               "results/modelF_tObs_atMR_tREs.rds")
-  # modelNames = c("modF_oner",
-  #                "modF_noPiRE",
-  #                "modF_noREs",
-  #                "modF_tREsMR",
-  #                "modF_tREs")
-  # plotFolder = c("figures/11.noAgedREs")
+  # postPaths = c(
+  #   # "results/modelF_tObs_atMR_oner.rds",
+  #   # "results/modelF_tObs_atMR_noPiRE.rds",
+  #   # "results/modelF_tObs_atMR_noREs.rds",
+  #   # "results/modelF_tObs_atMR_tREsMR.rds",
+  #   # "results/modelF_tObs_atMR_tREs.rds",
+  #   "results/modelM_tObs_atMR_tREsMR.rds",
+  #   "results/modelM_tObs_atMR_inits4.rds"
+  # )
+  # modelNames = c(
+  #   # "modF_oner",
+  #   # "modF_noPiRE",
+  #   # "modF_noREs",
+  #   # "modF_tREsMR",
+  #   # "modF_tREs",
+  #   "modM_tREsMR",
+  #   "modM_inits4"
+  #   )
+  # plotFolder = c("figures/12.males")
   # returnSumData = TRUE
   
   

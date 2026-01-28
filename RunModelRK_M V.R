@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_atMR_tREsMR.rds"
-out.sum <- "modelM_tObs_atMR_tREsMR_sum.txt"
+out.model <- "modelM_tObs_atMR_inits4.rds"
+out.sum <- "modelM_tObs_atMR_inits4_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -333,7 +333,7 @@ prepZs <- function(y){
   z_inits[y == 2] <- NA; z_dat[y == 2] <- 2  # alive off-site
   z_inits[y == 3] <- NA; z_dat[y == 3] <- 3  # dead by roadkill
   z_inits[y == 4] <- NA; z_dat[y == 4] <- 4  # dead by other cause
-  z_inits[y == 5] <- 1 ; z_dat[y == 5] <- NA # undetected (alive)
+  z_inits[y == 5] <- 4 ; z_dat[y == 5] <- NA # undetected (dead other)
   
   # Undetected after mortality -> long dead (5)
   n.inds <- nrow(y)
