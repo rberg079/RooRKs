@@ -9,8 +9,8 @@
 
 prepDataRK <- function(females = T){
   
-  # for testing purposes
-  females = TRUE
+  # # for testing purposes
+  # females = TRUE
   
   library(readxl)
   library(tidyverse)
@@ -343,7 +343,7 @@ prepDataRK <- function(females = T){
   # assemble list
   dataRK <- list(
     y = y,
-    # id = id,
+    id = id,
     # obs = obs,
     # env = env,
     age = age,
