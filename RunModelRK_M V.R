@@ -5,13 +5,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- FALSE
+females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_atMR_inits4.rds"
-out.sum <- "modelM_tObs_atMR_inits4_sum.txt"
+out.model <- "modelF_tObs_atMR_lowRKs.rds"
+out.sum <- "modelF_tObs_atMR_lowRKs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -238,7 +238,7 @@ myCode <- nimbleCode({
       # RECOVERED ROADKILL
       obs.mat[i,1,3,t] <- 0
       obs.mat[i,2,3,t] <- 0
-      obs.mat[i,3,3,t] <- r[i,t]
+      obs.mat[i,3,3,t] <- 1 # r[i,t]
       obs.mat[i,4,3,t] <- 0
       obs.mat[i,5,3,t] <- 0
       
@@ -252,7 +252,7 @@ myCode <- nimbleCode({
       # UNDETECTED
       obs.mat[i,1,5,t] <- 1-Pi[i,t]
       obs.mat[i,2,5,t] <- 1-Po[i,t]
-      obs.mat[i,3,5,t] <- 1-r[i,t]
+      obs.mat[i,3,5,t] <- 0 # 1-r[i,t]
       obs.mat[i,4,5,t] <- 1-r[i,t]
       obs.mat[i,5,5,t] <- 1
       
@@ -639,16 +639,13 @@ MCMCplot(object = out,
          ref_ovl = FALSE)
 
 MCMCtrace(object = out,
-          pdf = TRUE, # no export to PDF
+          pdf = FALSE, # no export to PDF
           ind = TRUE, # separate density lines per chain
           Rhat = TRUE, # add Rhat diagnostics
           n.eff = TRUE, # add eff sample size
-          params = c("B.veg", # "B.obsR", "B.obsO",
-                     "mean.phi", "mean.M", "mean.R",
-                     "mu.phi", "mu.M", "mu.R", "mu.rR", "mu.rO",
-                     "mean.Pi", "mean.Po", "mean.rR", "mean.rO",
-                     "sigma.phi", "sigma.M", "sigma.R",
-                     "sigma.rR", "sigma.rO"))
+          params = c("mu.phi", "mu.M", "mu.R", "mu.Pi", "mu.Po", "mu.r",
+                     "mean.phi", "mean.M", "mean.R", "mean.Pi", "mean.Po", "mean.r",
+                     "sigma.phi", "sigma.M", "sigma.R"))
 
 # Correlation
 autocorr.diag(out)

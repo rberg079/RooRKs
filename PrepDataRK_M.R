@@ -9,8 +9,8 @@
 
 prepDataRK <- function(females = T){
   
-  # # for testing purposes
-  # females = FALSE
+  # for testing purposes
+  females = TRUE
   
   library(readxl)
   library(tidyverse)
@@ -22,7 +22,7 @@ prepDataRK <- function(females = T){
   # yafs <- read_excel("data/RSmain_Jan26.xlsx")
   surv <- read_excel("data/PromSurvivalNov25_RB.xlsx", sheet = "YEARLY SURV")
   # obs <- read_excel("data/PromObs_2008-2024.xlsx")
-  env <- read_csv("data/Env_Mar25.csv")
+  # env <- read_csv("data/Env_Mar25.csv")
   
   # modify column names to read as survived to s20XX
   surv <- surv %>%
@@ -275,27 +275,27 @@ prepDataRK <- function(females = T){
 
   ## Environmental data --------------------------------------------------------
   
-  env <- env %>% 
-    mutate(Year = ifelse(Month < 10, Year-1, Year)) %>% 
-    group_by(Year) %>% 
-    mutate(Veg = sum(Veg, na.rm = T),
-           Dens = mean(Dens, na.rm = T),
-           Win = sum(Warn.18, na.rm = T),
-           Veg = ifelse(between(Year, 2009, 2023), Veg, NA),
-           Dens = ifelse(between(Year, 2008, 2024), Dens, NA),
-           Win = ifelse(between(Year, 2008, 2023), Win, NA)) %>%
-    distinct(Year, Veg, Dens, Win) %>%
-    ungroup()
-  
-  env  <- env[3:19,] # [2008:2024,]
-  # obs  <- round(as.numeric(scale(obs$n)), 3)
-  veg  <- round(as.numeric(scale(env$Veg)), 3)
-  dens <- round(as.numeric(scale(env$Dens)), 3)
-  win  <- round(as.numeric(scale(env$Win)), 3)
-  
-  noVeg  <- c(as.numeric(which(is.na(veg))));  nNoVeg  <- length(noVeg)
-  noDens <- c(as.numeric(which(is.na(dens)))); nNoDens <- length(noDens)
-  noWin  <- c(as.numeric(which(is.na(win))));  nNoWin  <- length(noWin)
+  # env <- env %>% 
+  #   mutate(Year = ifelse(Month < 10, Year-1, Year)) %>% 
+  #   group_by(Year) %>% 
+  #   mutate(Veg = sum(Veg, na.rm = T),
+  #          Dens = mean(Dens, na.rm = T),
+  #          Win = sum(Warn.18, na.rm = T),
+  #          Veg = ifelse(between(Year, 2009, 2023), Veg, NA),
+  #          Dens = ifelse(between(Year, 2008, 2024), Dens, NA),
+  #          Win = ifelse(between(Year, 2008, 2023), Win, NA)) %>%
+  #   distinct(Year, Veg, Dens, Win) %>%
+  #   ungroup()
+  # 
+  # env  <- env[3:19,] # [2008:2024,]
+  # # obs  <- round(as.numeric(scale(obs$n)), 3)
+  # veg  <- round(as.numeric(scale(env$Veg)), 3)
+  # dens <- round(as.numeric(scale(env$Dens)), 3)
+  # win  <- round(as.numeric(scale(env$Win)), 3)
+  # 
+  # noVeg  <- c(as.numeric(which(is.na(veg))));  nNoVeg  <- length(noVeg)
+  # noDens <- c(as.numeric(which(is.na(dens)))); nNoDens <- length(noDens)
+  # noWin  <- c(as.numeric(which(is.na(win))));  nNoWin  <- length(noWin)
   
   # write_csv(env, "env.csv")
   
@@ -343,31 +343,31 @@ prepDataRK <- function(females = T){
   # assemble list
   dataRK <- list(
     y = y,
-    id = id,
+    # id = id,
     # obs = obs,
-    env = env,
+    # env = env,
     age = age,
     ageC = ageC,
     first = first,
     last = last,
     
-    veg = veg,
-    dens = dens,
-    win = win,
-    noVeg = noVeg,
-    noDens = noDens,
-    noWin = noWin,
-    nNoVeg = nNoVeg,
-    nNoDens = nNoDens,
-    nNoWin = nNoWin,
+    # veg = veg,
+    # dens = dens,
+    # win = win,
+    # noVeg = noVeg,
+    # noDens = noDens,
+    # noWin = noWin,
+    # nNoVeg = nNoVeg,
+    # nNoDens = nNoDens,
+    # nNoWin = nNoWin,
     
     n.inds = n.inds,
     n.ageC = n.ageC,
     n.occasions = n.occasions,
     n.obs.states = n.obs.states,
-    n.true.states = n.true.states,
-    badFirst = badFirst,
-    unkAge = unkAge
+    n.true.states = n.true.states
+    # badFirst = badFirst,
+    # unkAge = unkAge
     )
   
 }
