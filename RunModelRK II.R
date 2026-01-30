@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_newZinits.rds"
-out.sum <- "modelF_tObs_tR_newZinits_sum.txt"
+out.model <- "modelF_tObs_tR_Zinits3.rds"
+out.sum <- "modelF_tObs_tR_Zinits3_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -300,64 +300,64 @@ myCode <- nimbleCode({
 # z_inits <- ZZs$z_inits
 # z_dat <- ZZs$z_dat
 
-# version 2
-# fills in occasions between first & last, when known alive
-# proporses random time of death sometime after disappearance
-prepZs <- function(y){
-  n.inds <- nrow(y)
-  n.occ <- ncol(y)
-
-  z_inits <- matrix(NA, n.inds, n.occ)
-  z_dat   <- matrix(NA, n.inds, n.occ)
-  
-  for(i in 1:n.inds){
-    # find first and last observation
-    obs_idx <- which(y[i,] != 999 & y[i,] != 4) # 4 is undetected
-    
-    if(length(obs_idx) > 0){
-      f <- min(obs_idx)
-      l <- max(obs_idx)
-      
-      # DATA: known alive from first to last seen
-      # Note: z_dat is whatever y is at l (last)
-      z_dat[i, f:l] <- y[i, f:l]
-      
-      # INITS: fill the gap between last seen & end
-      if(l < n.occ){
-        # if last was a death (2 or 3), fill with 4
-        if(y[i, l] %in% c(2, 3)){
-          z_dat[i, (l + 1):n.occ] <- 4 # known long dead
-        }else{
-          # if last was alive (1), propose a time of death
-          # pick a random time of death to help mixing
-          maybe_die <- sample((l + 1):(n.occ + 1), 1)
-          if(maybe_die <= n.occ){
-            z_inits[i, (l + 1):maybe_die] <- 1 # alive until death
-            # pick a random cause for inits
-            z_inits[i, maybe_die] <- sample(2:3, 1)
-            if(maybe_die < n.occ){
-              z_inits[i, (maybe_die + 1):n.occ] <- 4
-            }
-          }else{
-            z_inits[i, (l + 1):n.occ] <- 1 # stays alive
-          }
-        }
-      }
-    }
-  }
-  return(list(z_inits = z_inits,
-              z_dat = z_dat))
-}
-
-ZZs <- prepZs(y)
-z_inits <- ZZs$z_inits
-z_dat <- ZZs$z_dat
-
-# # safeties
-# z_dat[z_dat == 999] <- NA
-# z_dat[z_dat == 4] <- NA # undetected is NOT a known state
-# # add deterministic post-death states calculated in prepZs
-# z_dat[!is.na(ZZs$z_dat) & ZZs$z_dat == 4] <- 4
+# # version 2
+# # fills in occasions between first & last, when known alive
+# # proporses random time of death sometime after disappearance
+# prepZs <- function(y){
+#   n.inds <- nrow(y)
+#   n.occ <- ncol(y)
+# 
+#   z_inits <- matrix(NA, n.inds, n.occ)
+#   z_dat   <- matrix(NA, n.inds, n.occ)
+#   
+#   for(i in 1:n.inds){
+#     # find first and last observation
+#     obs_idx <- which(y[i,] != 999 & y[i,] != 4) # 4 is undetected
+#     
+#     if(length(obs_idx) > 0){
+#       f <- min(obs_idx)
+#       l <- max(obs_idx)
+#       
+#       # DATA: known alive from first to last seen
+#       # Note: z_dat is whatever y is at l (last)
+#       z_dat[i, f:l] <- y[i, f:l]
+#       
+#       # INITS: fill the gap between last seen & end
+#       if(l < n.occ){
+#         # if last was a death (2 or 3), fill with 4
+#         if(y[i, l] %in% c(2, 3)){
+#           z_dat[i, (l + 1):n.occ] <- 4 # known long dead
+#         }else{
+#           # if last was alive (1), propose a time of death
+#           # pick a random time of death to help mixing
+#           maybe_die <- sample((l + 1):(n.occ + 1), 1)
+#           if(maybe_die <= n.occ){
+#             z_inits[i, (l + 1):maybe_die] <- 1 # alive until death
+#             # pick a random cause for inits
+#             z_inits[i, maybe_die] <- sample(2:3, 1)
+#             if(maybe_die < n.occ){
+#               z_inits[i, (maybe_die + 1):n.occ] <- 4
+#             }
+#           }else{
+#             z_inits[i, (l + 1):n.occ] <- 1 # stays alive
+#           }
+#         }
+#       }
+#     }
+#   }
+#   return(list(z_inits = z_inits,
+#               z_dat = z_dat))
+# }
+# 
+# ZZs <- prepZs(y)
+# z_inits <- ZZs$z_inits
+# z_dat <- ZZs$z_dat
+# 
+# # # safeties
+# # z_dat[z_dat == 999] <- NA
+# # z_dat[z_dat == 4] <- NA # undetected is NOT a known state
+# # # add deterministic post-death states calculated in prepZs
+# # z_dat[!is.na(ZZs$z_dat) & ZZs$z_dat == 4] <- 4
 
 # version 3
 # chatGPT's suggested middle ground
@@ -405,9 +405,7 @@ prepZs <- function(y){
 }
 
 
-## Run prep
 ZZs <- prepZs(y)
-
 z_dat   <- ZZs$z_dat
 z_inits <- ZZs$z_inits
 
