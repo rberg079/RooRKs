@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_Zinits3.rds"
-out.sum <- "modelF_tObs_tR_Zinits3_sum.txt"
+out.model <- "modelF_tObs_tR_Zinits4.rds"
+out.sum <- "modelF_tObs_tR_Zinits4_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -302,7 +302,8 @@ myCode <- nimbleCode({
 
 # # version 2
 # # fills in occasions between first & last, when known alive
-# # proporses random time of death sometime after disappearance
+# # proposes random time of death sometime after disappearance
+# # OUTCOME: conditions the posterior, many params won't update
 # prepZs <- function(y){
 #   n.inds <- nrow(y)
 #   n.occ <- ncol(y)
@@ -352,60 +353,112 @@ myCode <- nimbleCode({
 # ZZs <- prepZs(y)
 # z_inits <- ZZs$z_inits
 # z_dat <- ZZs$z_dat
-# 
-# # # safeties
-# # z_dat[z_dat == 999] <- NA
-# # z_dat[z_dat == 4] <- NA # undetected is NOT a known state
-# # # add deterministic post-death states calculated in prepZs
-# # z_dat[!is.na(ZZs$z_dat) & ZZs$z_dat == 4] <- 4
 
-# version 3
-# chatGPT's suggested middle ground
-prepZs <- function(y){
+# # version 3
+# # chatGPT's suggested middle ground
+# # OUTCOME: essentially does the same as version 1
+# prepZs <- function(y){
+#   
+#   n.inds <- nrow(y)
+#   n.occ  <- ncol(y)
+#   
+#   z_dat   <- matrix(NA, n.inds, n.occ)  # DATA: logically fixed states
+#   z_inits <- matrix(NA, n.inds, n.occ)  # INITS: diffuse guesses only
+#   
+#   for(i in 1:n.inds){
+#     
+#     # 1. map known latent states
+#     z_dat[i, y[i, ] == 1] <- 1  # seen alive
+#     z_dat[i, y[i, ] == 2] <- 2  # recovered roadkill
+#     z_dat[i, y[i, ] == 3] <- 3  # recovered other
+#     # undetected (4) and 999 remain NA
+#     
+#     # 2. enforce long-dead after known death
+#     death_idx <- which(z_dat[i, ] %in% c(2, 3))
+#     if(length(death_idx) > 0){
+#       d <- min(death_idx)
+#       if(d < n.occ){
+#         z_dat[i, (d + 1):n.occ] <- 4
+#       }
+#     }
+#     
+#     # 3. diffuse initial values for unknowns
+#     for(t in 1:n.occ){
+#       if(is.na(z_dat[i, t])){
+#         if(length(death_idx) == 0 || t < min(death_idx)){ # before any known death
+#           z_inits[i, t] <- sample(c(1, 2, 3), 1, prob = c(0.2, 0.4, 0.4)) # sample state
+#         }else{
+#           z_inits[i, t] <- 4 # long dead after known death
+#         }
+#       }
+#     }
+#   }
+# 
+#   return(list(
+#     z_dat   = z_dat,
+#     z_inits = z_inits
+#   ))
+# }
+# 
+# 
+# ZZs <- prepZs(y)
+# z_dat   <- ZZs$z_dat
+# z_inits <- ZZs$z_inits
+
+# version 4
+# another potential middle ground
+# fixes z_dat between first & last as 1
+# but stays flexible after last observation
+# OUTCOME: looks a lot like version 1
+prepZs <- function(y, first){
   
   n.inds <- nrow(y)
   n.occ  <- ncol(y)
   
-  z_dat   <- matrix(NA, n.inds, n.occ)  # DATA: logically fixed states
-  z_inits <- matrix(NA, n.inds, n.occ)  # INITS: diffuse guesses only
+  z_dat   <- matrix(NA, n.inds, n.occ)
+  z_inits <- matrix(NA, n.inds, n.occ)
   
-  for(i in 1:n.inds){
+  for(i in 1:n.inds) {
+    f <- first[i]
+    alive_idx <- which(y[i, ] == 1)
+    death_idx <- which(y[i, ] %in% c(2, 3))
     
-    # 1. map known latent states
+    # 1. DATA: bridge known alive periods
     z_dat[i, y[i, ] == 1] <- 1  # seen alive
     z_dat[i, y[i, ] == 2] <- 2  # recovered roadkill
     z_dat[i, y[i, ] == 3] <- 3  # recovered other
-    # undetected (4) and 999 remain NA
     
-    # 2. enforce long-dead after known death
-    death_idx <- which(z_dat[i, ] %in% c(2, 3))
-    if(length(death_idx) > 0){
-      d <- min(death_idx)
-      if(d < n.occ){
-        z_dat[i, (d + 1):n.occ] <- 4
+    if(length(alive_idx) > 1) {
+      z_dat[i, min(alive_idx):max(alive_idx)] <- 1
+    }
+    
+    # 2. DATA: known death & subsequent long-dead
+    if(length(death_idx) > 0) {
+      d_time <- min(death_idx)
+      z_dat[i, d_time] <- y[i, d_time]
+      if(d_time < n.occ) {
+        z_dat[i, (d_time + 1):n.occ] <- 4
       }
     }
     
-    # 3. diffuse initial values for unknowns
-    for(t in 1:n.occ){
-      if(is.na(z_dat[i, t])){
-        if(length(death_idx) == 0 || t < min(death_idx)){ # before any known death
-          z_inits[i, t] <- sample(c(1, 2, 3), 1, prob = c(0.2, 0.4, 0.4)) # sample state
-        }else{
-          z_inits[i, t] <- 4 # long dead after known death
+    # 3. INITS: only after first detection
+    if(f < n.occ) {
+      for(t in (f + 1):n.occ) {
+        if(is.na(z_dat[i, t])) {
+          if(length(death_idx) == 0 || t < min(death_idx)) { # before any known death
+            # z_inits[i, t] <- sample(c(1, 2, 3), 1, prob = c(0.2, 0.4, 0.4)) # sample state
+            # z_inits[i, t] <- 4 # potentially dangerous because 4 is an absorbing state
+            z_inits[i, t] <- 1 # safest & cleanest
+          }
         }
       }
     }
   }
-  
-  return(list(
-    z_dat   = z_dat,
-    z_inits = z_inits
-  ))
+  return(list(z_dat = z_dat,
+              z_inits = z_inits))
 }
 
-
-ZZs <- prepZs(y)
+ZZs <- prepZs(y, first)
 z_dat   <- ZZs$z_dat
 z_inits <- ZZs$z_inits
 
@@ -563,7 +616,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-# out.model <- "modelF_tObs_tR_newZinits.rds"
+# out.model <- "modelF_tObs_tR_noM2rs.rds"
 # out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
