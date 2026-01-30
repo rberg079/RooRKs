@@ -238,7 +238,7 @@ myCode <- nimbleCode({
       # RECOVERED ROADKILL
       obs.mat[i,1,3,t] <- 0
       obs.mat[i,2,3,t] <- 0
-      obs.mat[i,3,3,t] <- 1 # r[i,t]
+      obs.mat[i,3,3,t] <- r[i,t]
       obs.mat[i,4,3,t] <- 0
       obs.mat[i,5,3,t] <- 0
       
@@ -252,7 +252,7 @@ myCode <- nimbleCode({
       # UNDETECTED
       obs.mat[i,1,5,t] <- 1-Pi[i,t]
       obs.mat[i,2,5,t] <- 1-Po[i,t]
-      obs.mat[i,3,5,t] <- 0 # 1-r[i,t]
+      obs.mat[i,3,5,t] <- 1-r[i,t]
       obs.mat[i,4,5,t] <- 1-r[i,t]
       obs.mat[i,5,5,t] <- 1
       
