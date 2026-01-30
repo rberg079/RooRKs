@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_Zinits4.rds"
-out.sum <- "modelF_tObs_tR_Zinits4_sum.txt"
+out.model <- "modelF_tObs_tR_infPriors.rds"
+out.sum <- "modelF_tObs_tR_infPriors_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -212,12 +212,16 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   # # quick simulations
-  # hist(rbeta(1000, 8, 1))
-  # hist(rbeta(1000, 8, 2))
-  # hist(rbeta(1000, 8, 4))
-  # hist(rbeta(1000, 4, 4))
-  # hist(rbeta(1000, 2, 8))
-  # hist(rbeta(1000, 1, 8))
+  # # according to CJS models in Ecology paper:
+  # hist(rnorm(1000, 0.89, 0.029), xlim = c(0,1)) # phi age 1-2
+  # hist(rnorm(1000, 0.95, 0.014), xlim = c(0,1)) # phi age 3-6
+  # hist(rnorm(1000, 0.90, 0.024), xlim = c(0,1)) # phi age 7-9
+  # hist(rnorm(1000, 0.70, 0.092), xlim = c(0,1)) # phi age 10+
+  # 
+  # hist(rbeta(1000, 20, 4), xlim = c(0,1))  # phi age 1-2
+  # hist(rbeta(1000, 20, 2), xlim = c(0,1))  # phi age 3-6
+  # hist(rbeta(1000, 20, 4), xlim = c(0,1))  # phi age 7-9
+  # hist(rbeta(1000, 20, 12), xlim = c(0,1)) # phi age 10+
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
@@ -225,17 +229,17 @@ myCode <- nimbleCode({
   
   # informative priors on survival
   # based on CJS models in Ecology paper
-  mu.phi[1] ~ dbeta(8, 2)   # 1 year-old subadults
-  mu.phi[2] ~ dbeta(8, 2)   # 2 year-old subadults
-  mu.phi[3] ~ dbeta(8, 2)   # prime-aged adults
-  mu.phi[4] ~ dbeta(8, 2)   # pre-senescent
-  mu.phi[5] ~ dbeta(8, 4)   # senescent
+  mu.phi[1] ~ dbeta(20, 4)   # 1 year-old subadults
+  mu.phi[2] ~ dbeta(20, 4)   # 2 year-old subadults
+  mu.phi[3] ~ dbeta(20, 2)   # prime-aged adults
+  mu.phi[4] ~ dbeta(20, 4)   # pre-senescent
+  mu.phi[5] ~ dbeta(20, 12)  # senescent
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
-  mu.p ~ dbeta(20, 2)
-  mu.rR ~ dbeta(4, 4)
-  mu.rO ~ dbeta(4, 4)
+  mu.p  ~ dbeta(20, 4)
+  mu.rR ~ dbeta(10, 10)
+  mu.rO ~ dbeta(10, 10)
   
   sigma.phi ~ dexp(10)
   sigma.R   ~ dexp(10)
@@ -263,216 +267,53 @@ myCode <- nimbleCode({
 # 3 - recovered other
 # 4 - undetected
 
-# # version 1
-# prepZs <- function(y){
-#   z_inits <- y
-#   z_dat   <- y
-# 
-#   z_inits[y == 999] <- NA
-#   z_dat[y == 999]   <- NA
-# 
-#   # Observed states -> deterministic transitions
-#   z_inits[y == 1] <- NA; z_dat[y == 1] <- 1  # alive
-#   z_inits[y == 2] <- NA; z_dat[y == 2] <- 2  # dead by roadkill
-#   z_inits[y == 3] <- NA; z_dat[y == 3] <- 3  # dead by other cause
-#   z_inits[y == 4] <- 1 ; z_dat[y == 4] <- NA # undetected
-# 
-#   # Undetected after mortality -> long dead (4)
-#   n.inds <- nrow(y)
-#   for (i in 1:n.inds){
-#     tmp <- z_dat[i, ]
-#     if (any(tmp == 2, na.rm = T) | any(tmp == 3, na.rm = T)) {
-#       indexD <- min(which(tmp == 2 | tmp == 3)) # index of 2 or 3 (dead)
-#       if(indexD < length(tmp)){ # safety in case roos die in last occasion
-#         indexLD <- (indexD + 1):length(tmp) # 4 after 2|3 -> 4 (long dead)
-#         tmp[indexLD] <- 4
-#       }
-#     }
-#     z_dat[i, ] <- tmp
-#   }
-#   z_inits[z_dat == 4] <- NA
-# 
-#   return(list(z_inits = z_inits,
-#               z_dat = z_dat))
-# }
-# 
-# ZZs <- prepZs(y)
-# z_inits <- ZZs$z_inits
-# z_dat <- ZZs$z_dat
-
-# # version 2
-# # fills in occasions between first & last, when known alive
-# # proposes random time of death sometime after disappearance
-# # OUTCOME: conditions the posterior, many params won't update
-# prepZs <- function(y){
-#   n.inds <- nrow(y)
-#   n.occ <- ncol(y)
-# 
-#   z_inits <- matrix(NA, n.inds, n.occ)
-#   z_dat   <- matrix(NA, n.inds, n.occ)
-#   
-#   for(i in 1:n.inds){
-#     # find first and last observation
-#     obs_idx <- which(y[i,] != 999 & y[i,] != 4) # 4 is undetected
-#     
-#     if(length(obs_idx) > 0){
-#       f <- min(obs_idx)
-#       l <- max(obs_idx)
-#       
-#       # DATA: known alive from first to last seen
-#       # Note: z_dat is whatever y is at l (last)
-#       z_dat[i, f:l] <- y[i, f:l]
-#       
-#       # INITS: fill the gap between last seen & end
-#       if(l < n.occ){
-#         # if last was a death (2 or 3), fill with 4
-#         if(y[i, l] %in% c(2, 3)){
-#           z_dat[i, (l + 1):n.occ] <- 4 # known long dead
-#         }else{
-#           # if last was alive (1), propose a time of death
-#           # pick a random time of death to help mixing
-#           maybe_die <- sample((l + 1):(n.occ + 1), 1)
-#           if(maybe_die <= n.occ){
-#             z_inits[i, (l + 1):maybe_die] <- 1 # alive until death
-#             # pick a random cause for inits
-#             z_inits[i, maybe_die] <- sample(2:3, 1)
-#             if(maybe_die < n.occ){
-#               z_inits[i, (maybe_die + 1):n.occ] <- 4
-#             }
-#           }else{
-#             z_inits[i, (l + 1):n.occ] <- 1 # stays alive
-#           }
-#         }
-#       }
-#     }
-#   }
-#   return(list(z_inits = z_inits,
-#               z_dat = z_dat))
-# }
-# 
-# ZZs <- prepZs(y)
-# z_inits <- ZZs$z_inits
-# z_dat <- ZZs$z_dat
-
-# # version 3
-# # chatGPT's suggested middle ground
-# # OUTCOME: essentially does the same as version 1
-# prepZs <- function(y){
-#   
-#   n.inds <- nrow(y)
-#   n.occ  <- ncol(y)
-#   
-#   z_dat   <- matrix(NA, n.inds, n.occ)  # DATA: logically fixed states
-#   z_inits <- matrix(NA, n.inds, n.occ)  # INITS: diffuse guesses only
-#   
-#   for(i in 1:n.inds){
-#     
-#     # 1. map known latent states
-#     z_dat[i, y[i, ] == 1] <- 1  # seen alive
-#     z_dat[i, y[i, ] == 2] <- 2  # recovered roadkill
-#     z_dat[i, y[i, ] == 3] <- 3  # recovered other
-#     # undetected (4) and 999 remain NA
-#     
-#     # 2. enforce long-dead after known death
-#     death_idx <- which(z_dat[i, ] %in% c(2, 3))
-#     if(length(death_idx) > 0){
-#       d <- min(death_idx)
-#       if(d < n.occ){
-#         z_dat[i, (d + 1):n.occ] <- 4
-#       }
-#     }
-#     
-#     # 3. diffuse initial values for unknowns
-#     for(t in 1:n.occ){
-#       if(is.na(z_dat[i, t])){
-#         if(length(death_idx) == 0 || t < min(death_idx)){ # before any known death
-#           z_inits[i, t] <- sample(c(1, 2, 3), 1, prob = c(0.2, 0.4, 0.4)) # sample state
-#         }else{
-#           z_inits[i, t] <- 4 # long dead after known death
-#         }
-#       }
-#     }
-#   }
-# 
-#   return(list(
-#     z_dat   = z_dat,
-#     z_inits = z_inits
-#   ))
-# }
-# 
-# 
-# ZZs <- prepZs(y)
-# z_dat   <- ZZs$z_dat
-# z_inits <- ZZs$z_inits
-
-# version 4
-# another potential middle ground
-# fixes z_dat between first & last as 1
-# but stays flexible after last observation
-# OUTCOME: looks a lot like version 1
-prepZs <- function(y, first){
+# version 1
+prepZs <- function(y){
   
   n.inds <- nrow(y)
   n.occ  <- ncol(y)
   
-  z_dat   <- matrix(NA, n.inds, n.occ)
-  z_inits <- matrix(NA, n.inds, n.occ)
-  
+  zInits <- y
+  zData  <- y
+
+  zInits[y == 999] <- NA
+  zData[y == 999]  <- NA
+
+  # map observed events to known latent states
+  zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
+  zInits[y == 2] <- NA; zData[y == 2] <- 2  # dead by roadkill
+  zInits[y == 3] <- NA; zData[y == 3] <- 3  # dead by other cause
+  zInits[y == 4] <- 1 ; zData[y == 4] <- NA # undetected
+
+  # enforce long dead after known death
   for(i in 1:n.inds) {
-    f <- first[i]
-    alive_idx <- which(y[i, ] == 1)
-    death_idx <- which(y[i, ] %in% c(2, 3))
+    dead <- which(y[i, ] %in% c(2, 3))
     
-    # 1. DATA: bridge known alive periods
-    z_dat[i, y[i, ] == 1] <- 1  # seen alive
-    z_dat[i, y[i, ] == 2] <- 2  # recovered roadkill
-    z_dat[i, y[i, ] == 3] <- 3  # recovered other
-    
-    if(length(alive_idx) > 1) {
-      z_dat[i, min(alive_idx):max(alive_idx)] <- 1
+    if(length(dead) > 0){
+      zData[i, (dead + 1):n.occ] <- 4
     }
-    
-    # 2. DATA: known death & subsequent long-dead
-    if(length(death_idx) > 0) {
-      d_time <- min(death_idx)
-      z_dat[i, d_time] <- y[i, d_time]
-      if(d_time < n.occ) {
-        z_dat[i, (d_time + 1):n.occ] <- 4
-      }
-    }
-    
-    # 3. INITS: only after first detection
-    if(f < n.occ) {
-      for(t in (f + 1):n.occ) {
-        if(is.na(z_dat[i, t])) {
-          if(length(death_idx) == 0 || t < min(death_idx)) { # before any known death
-            # z_inits[i, t] <- sample(c(1, 2, 3), 1, prob = c(0.2, 0.4, 0.4)) # sample state
-            # z_inits[i, t] <- 4 # potentially dangerous because 4 is an absorbing state
-            z_inits[i, t] <- 1 # safest & cleanest
-          }
-        }
-      }
-    }
-  }
-  return(list(z_dat = z_dat,
-              z_inits = z_inits))
+  }  
+  zInits[zData == 4] <- NA
+
+  return(list(zInits = zInits,
+              zData  = zData))
 }
 
-ZZs <- prepZs(y, first)
-z_dat   <- ZZs$z_dat
-z_inits <- ZZs$z_inits
+ZZs <- prepZs(y)
+zInits <- ZZs$zInits
+zData <- ZZs$zData
 
 
 ## Assemble --------------------------------------------------------------------
 
 # Inits
 myInits <- list(
-  z         = z_inits,
-  mu.phi    = rbeta(n.ageC, 8, 4),
+  z         = zInits,
+  mu.phi    = rbeta(n.ageC, 20, 4),
   mu.R      = rbeta(n.ageC, 2, 8),
-  mu.p      = rbeta(1, 8, 1),
-  mu.rR     = rbeta(1, 4, 4),
-  mu.rO     = rbeta(1, 4, 4),
+  mu.p      = rbeta(1, 20, 4),
+  mu.rR     = rbeta(1, 10, 10),
+  mu.rO     = rbeta(1, 10, 10),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = rnorm(n.occasions, 0, 0.1),
   sigma.phi = rexp(1, 10),
@@ -482,7 +323,7 @@ myInits <- list(
 # Data
 y[y == 999] <- NA
 myData <- list(y = y, 
-               z = z_dat, 
+               z = zData, 
                age = age,
                ageC = ageC)
 
@@ -507,7 +348,7 @@ myConst <- list(n.inds = n.inds,
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
-#   print(z_dat[ii, first[ii]])
+#   print(zData[ii, first[ii]])
 # }
 
 # MCMC settings
