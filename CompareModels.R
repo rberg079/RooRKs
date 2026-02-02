@@ -35,20 +35,24 @@ CompareModels <- function(nYear = 17,
   #   # "results/modelF_tObs_atMR_noPiRE.rds",
   #   # "results/modelF_tObs_atMR_noREs.rds",
   #   # "results/modelF_tObs_atMR_tREsMR.rds",
-  #   # "results/modelF_tObs_atMR_tREs.rds",
-  #   "results/modelM_tObs_atMR_tREsMR.rds",
-  #   "results/modelM_tObs_atMR_inits4.rds"
+  #   # "results/modelF_tObs_atMR_tREsPhi.rds"
+  #   "results/modelF_tObs_tR_infPriors.rds",
+  #   "results/modelF_tObs_tR_fixr20.rds",
+  #   "results/modelF_tObs_tR_fixr50.rds",
+  #   "results/modelF_tObs_tR_fixr80.rds"
   # )
   # modelNames = c(
   #   # "modF_oner",
   #   # "modF_noPiRE",
   #   # "modF_noREs",
   #   # "modF_tREsMR",
-  #   # "modF_tREs",
-  #   "modM_tREsMR",
-  #   "modM_inits4"
+  #   # "modF_tREsPhi",
+  #   "modF_infPhi",
+  #   "modF_fixr20",
+  #   "modF_fixr50",
+  #   "modF_fixr80"
   #   )
-  # plotFolder = c("figures/12.males")
+  # plotFolder = c("figures/13.fixRecov")
   # returnSumData = TRUE
   
   
@@ -57,7 +61,7 @@ CompareModels <- function(nYear = 17,
   library(coda)
   suppressPackageStartupMessages(library(tidyverse))
   suppressPackageStartupMessages(library(data.table))
-  library(NatParksPalettes)
+  # library(NatParksPalettes)
   library(paletteer)
   
   # check that models are specified correctly
@@ -123,15 +127,14 @@ CompareModels <- function(nYear = 17,
            Idx1 = map_dbl(Idx, ~ ifelse(length(.x) >= 1, as.numeric(.x[1]), NA)),
            Idx2 = map_dbl(Idx, ~ ifelse(length(.x) >= 2, as.numeric(.x[2]), NA)),
            
-           Age = case_when(grepl('mean.phi|mean.M|mean.R|mu.phi|mu.M|mu.R|B.veg', Parameter) ~ Idx1,
-                           # Parameter %in% c("mean.phi", "mean.M", "mean.R", "mu.phi", "mu.M", "mu.R", "B.veg") ~ Idx1,
-                           TRUE ~ NA_real_),
+           Age = case_when(
+             grepl('mean.phi|mean.M|mean.R|mu.phi|mu.M|mu.R|B.veg', Parameter) ~ Idx1,
+             TRUE ~ NA_real_),
            
-           Year = case_when(grepl('mean.Pi|mean.Po|mean.rR|mean.rO|mean.r|veg', Parameter) ~ Idx1,
-                            grepl('mean.phi|mean.M|mean.R', Parameter) ~ Idx2,
-                            # Parameter %in% c("mean.phi", "mean.M", "mean.R") ~ Idx2,
-                            # Parameter %in% c("mean.Pi", "mean.Po", "mean.rR", "mean.rO", "veg") ~ Idx1,
-                            TRUE ~ NA_real_),
+           Year = case_when(
+             grepl('mean.phi|mean.M|mean.R', Parameter) ~ Idx2,
+             grepl('mean.Pi|mean.Po|mean.p|mean.rR|mean.rO|mean.r|veg', Parameter) ~ Idx1,
+             TRUE ~ NA_real_),
            
            Year = ifelse(!is.na(Year), Year + minYear - 1, NA_real_),
            
@@ -151,19 +154,19 @@ CompareModels <- function(nYear = 17,
                  # paste0("B.veg[", plotAges, "]"),
                  "sigma.phi"),
 
-    Movement = c(paste0("mu.M[", plotAges, "]"),
-                 "sigma.M"),
+    # Movement = c(paste0("mu.M[", plotAges, "]"),
+    #              "sigma.M"),
 
     Roadkill = c(paste0("mu.R[", plotAges, "]"),
                  "sigma.R"),
 
-    Observation = c("mu.Pi", "mu.Po",
-                    "sigma.Pi", "sigma.Po"),
+    # Observation = c("mu.Pi", "mu.Po",
+    #                 "sigma.Pi", "sigma.Po"),
     
-    Recovery = c("mu.rR", "mu.rO", "mu.r",
-                 # "B.obsR", "B.obsO"
-                 "sigma.rR", "sigma.rO", "sigma.r"))
-  
+    # Recovery = c( "mu.rR", "mu.rO", "mu.r",
+    #               "sigma.rR", "sigma.rO", "sigma.r"),
+    
+    Detection = c("mu.p", "mu.rR", "mu.rO"))
   
   # time series of vital rates
   plot.TS <- list(
@@ -171,15 +174,15 @@ CompareModels <- function(nYear = 17,
     ParamNames = c(expand.grid(a = plotAges) %>%
                      mutate(param = paste0('mean.phi[', a, ']')) %>%
                      pull(param),
-                   expand.grid(a = plotAges) %>%
-                     mutate(param = paste0('mean.M[', a, ']')) %>%
-                     pull(param),
+                   # expand.grid(a = plotAges) %>%
+                   #   mutate(param = paste0('mean.M[', a, ']')) %>%
+                   #   pull(param),
                    expand.grid(a = plotAges) %>%
                      mutate(param = paste0('mean.R[', a, ']')) %>%
                      pull(param),
-                   'mean.Pi',
-                   'mean.Po',
-                   'mean.r'
+                   'mean.p',
+                   'mean.rR',
+                   'mean.rO'
                    ),
 
     ParamLabels = c('Survival probability (1)',
@@ -187,19 +190,19 @@ CompareModels <- function(nYear = 17,
                     'Survival probability (3-6)',
                     'Survival probability (7-9)',
                     'Survival probability (10+)',
-                    'Movement probability (1)',
-                    'Movement probability (2)',
-                    'Movement probability (3-6)',
-                    'Movement probability (7-9)',
-                    'Movement probability (10+)', 
+                    # 'Movement probability (1)',
+                    # 'Movement probability (2)',
+                    # 'Movement probability (3-6)',
+                    # 'Movement probability (7-9)',
+                    # 'Movement probability (10+)', 
                     'Roadkill probability (1)',
                     'Roadkill probability (2)',
                     'Roadkill probability (3-6)',
                     'Roadkill probability (7-9)',
                     'Roadkill probability (10+)',
-                    'Detection (on-site)',
-                    'Detection (off-site)',
-                    'Recovery (overall)')
+                    'Detection',
+                    'Recovery (roadkill)',
+                    'Recovery (other)')
     )
   
   

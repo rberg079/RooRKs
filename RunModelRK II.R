@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_infPriors.rds"
-out.sum <- "modelF_tObs_tR_infPriors_sum.txt"
+out.model <- "modelF_tObs_tR_fixr80.rds"
+out.sum <- "modelF_tObs_tR_fixr80_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -238,8 +238,11 @@ myCode <- nimbleCode({
   # Pi known to be extremely high &
   # to vary little from Ecology paper
   mu.p  ~ dbeta(20, 4)
-  mu.rR ~ dbeta(10, 10)
-  mu.rO ~ dbeta(10, 10)
+  # mu.rR ~ dbeta(10, 10)
+  # mu.rO ~ dbeta(10, 10)
+  
+  mu.rR <- 0.8
+  mu.rO <- 0.8
   
   sigma.phi ~ dexp(10)
   sigma.R   ~ dexp(10)
@@ -312,8 +315,8 @@ myInits <- list(
   mu.phi    = rbeta(n.ageC, 20, 4),
   mu.R      = rbeta(n.ageC, 2, 8),
   mu.p      = rbeta(1, 20, 4),
-  mu.rR     = rbeta(1, 10, 10),
-  mu.rO     = rbeta(1, 10, 10),
+  # mu.rR     = rbeta(1, 10, 10),
+  # mu.rO     = rbeta(1, 10, 10),
   eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R     = rnorm(n.occasions, 0, 0.1),
   sigma.phi = rexp(1, 10),
@@ -587,19 +590,27 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c(
-  "results/modelF_tObs_atMR_oner.rds",
-  "results/modelF_tObs_atMR_noPiRE.rds",
-  "results/modelF_tObs_atMR_noREs.rds",
-  "results/modelF_tObs_atMR_tREsMR.rds",
-  "results/modelF_tObs_atMR_tREsPhi.rds"
+  # "results/modelF_tObs_atMR_oner.rds",
+  # "results/modelF_tObs_atMR_noPiRE.rds",
+  # "results/modelF_tObs_atMR_noREs.rds",
+  # "results/modelF_tObs_atMR_tREsMR.rds",
+  # "results/modelF_tObs_atMR_tREsPhi.rds"
+  "results/modelF_tObs_tR_infPriors.rds",
+  "results/modelF_tObs_tR_fixr20.rds",
+  "results/modelF_tObs_tR_fixr50.rds",
+  "results/modelF_tObs_tR_fixr80.rds"
 ),
 modelNames = c(
-  "modF_oner",
-  "modF_noPiRE",
-  "modF_noREs",
-  "modF_tREsMR",
-  "modF_tREsPhi"
+  # "modF_oner",
+  # "modF_noPiRE",
+  # "modF_noREs",
+  # "modF_tREsMR",
+  # "modF_tREsPhi",
+  "modF_infPhi",
+  "modF_fixr20",
+  "modF_fixr50",
+  "modF_fixr80"
 ),
-plotFolder = c("figures/11.noAgedREs"),
+plotFolder = c("figures/13.fixRecov"),
 returnSumData = TRUE)
 
