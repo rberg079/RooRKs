@@ -9,8 +9,8 @@
 
 prepDataRK <- function(females = T){
   
-  # # for testing purposes
-  # females = TRUE
+  # for testing purposes
+  females = TRUE
   
   library(readxl)
   library(tidyverse)
@@ -103,7 +103,7 @@ prepDataRK <- function(females = T){
   id <- id %>% select(ID) %>% left_join(.,eh) %>% select(ID, Dead)
   
   # now that cause of death is stored in the Fate column
-  # replace observations of 0, 2, & 3 with observation state 4
+  # replace observations of 0, 2, & 3 with observation state 5
   # currently 2s are at first October when inds were not alive to be seen
   eh <- eh %>%
     mutate_at(3:20, ~replace(., . == 0, 4)) %>% # 0: recent natural death
@@ -117,12 +117,17 @@ prepDataRK <- function(females = T){
     eh <- eh %>% 
       rowwise() %>% 
       mutate(Gone = max(which(c_across(3:20) == 4)),
-             Gone = ifelse(Gone == "-Inf" | ID == 832, NA, Gone)) %>%
+             Gone = ifelse(Gone == "-Inf" | ID == 834 | ID == 1125, NA, Gone)) %>%
       ungroup()) # suppose to give -Inf warnings
   
   # split eh into alive vs dead IDs
   live <- eh %>% filter(is.na(Gone))
   dead <- eh %>% filter(!is.na(Gone))
+  
+  # TO SIMULATE/ASSUME:
+  # ...that all disappeared individuals died naturally
+  dead <- dead %>% 
+    mutate(Fate = ifelse(is.na(Fate), 3, Fate))
   
   tmp <- dead %>% select(1:2)
   dead <- dead %>% select(3:22)
