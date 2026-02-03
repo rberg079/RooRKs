@@ -1,16 +1,18 @@
 #' Prepare data for road mortality model
 #'
 #' @param females logical. If TRUE, data is prepped for female kangaroos only. females = TRUE by default.
+#' @param lowRK logical. If TRUE, data is prepped for low roadkill scenario, assuming all disappearances are natural deaths.
 #'
 #' @returns a list containing all data & constants needed for known-fate road mortality models.
 #' @export
 #'
 #' @examples
 
-prepDataRK <- function(females = T){
+prepDataRK <- function(females = T, lowRK){
   
-  # for testing purposes
-  females = TRUE
+  # # for testing purposes
+  # females = TRUE
+  # lowRK = FALSE
   
   library(readxl)
   library(tidyverse)
@@ -126,8 +128,20 @@ prepDataRK <- function(females = T){
   
   # TO SIMULATE/ASSUME:
   # ...that all disappeared individuals died naturally
-  dead <- dead %>% 
-    mutate(Fate = ifelse(is.na(Fate), 3, Fate))
+  # ...or that the RK:other ratio is the same among disappearances as recoveries
+  if(lowRK){
+    dead <- dead %>% 
+      mutate(Fate = ifelse(is.na(Fate), 3, Fate))
+  }else{
+    p <- prop.table(table(dead$Fate, useNA = "no"))
+    dead <- dead %>% 
+      mutate(Fate = ifelse(is.na(Fate),
+                           sample(c(2, 3),
+                                  size = sum(is.na(dead$Fate)),
+                                  prob = p[c("2", "3")],
+                                  replace = T),
+                           Fate))
+  }
   
   tmp <- dead %>% select(1:2)
   dead <- dead %>% select(3:22)

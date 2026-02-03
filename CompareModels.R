@@ -180,9 +180,9 @@ CompareModels <- function(nYear = 17,
                    expand.grid(a = plotAges) %>%
                      mutate(param = paste0('mean.R[', a, ']')) %>%
                      pull(param),
-                   'mean.p',
-                   'mean.rR',
-                   'mean.rO'
+                   'mean.p'
+                   # 'mean.rR',
+                   # 'mean.rO'
                    ),
 
     ParamLabels = c('Survival probability (1)',
@@ -200,9 +200,9 @@ CompareModels <- function(nYear = 17,
                     'Roadkill probability (3-6)',
                     'Roadkill probability (7-9)',
                     'Roadkill probability (10+)',
-                    'Detection',
-                    'Recovery (roadkill)',
-                    'Recovery (other)')
+                    'Detection')
+                    # 'Recovery (roadkill)',
+                    # 'Recovery (other)')
     )
   
   

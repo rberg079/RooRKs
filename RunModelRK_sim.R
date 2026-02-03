@@ -5,13 +5,14 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
+lowRK <- FALSE
 females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_lowRK.rds"
-out.sum <- "modelF_tObs_tR_lowRK_sum.txt"
+out.model <- "modelF_tObs_tR_highRK.rds"
+out.sum <- "modelF_tObs_tR_highRK_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -35,7 +36,7 @@ library(tidyverse)
 
 # load data
 source("PrepDataRK_sim.R")
-dataRK <- prepDataRK(females = females)
+dataRK <- prepDataRK(females = females, lowRK = lowRK)
 list2env(dataRK, envir = .GlobalEnv)
 
 # # or...
@@ -596,27 +597,13 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c(
-  # "results/modelF_tObs_atMR_oner.rds",
-  # "results/modelF_tObs_atMR_noPiRE.rds",
-  # "results/modelF_tObs_atMR_noREs.rds",
-  # "results/modelF_tObs_atMR_tREsMR.rds",
-  # "results/modelF_tObs_atMR_tREsPhi.rds"
-  "results/modelF_tObs_tR_infPriors.rds",
-  "results/modelF_tObs_tR_fixr20.rds",
-  "results/modelF_tObs_tR_fixr50.rds",
-  "results/modelF_tObs_tR_fixr80.rds"
+  "results/modelF_tObs_tR_lowRK.rds",
+  "results/modelF_tObs_tR_highRK.rds"
 ),
 modelNames = c(
-  # "modF_oner",
-  # "modF_noPiRE",
-  # "modF_noREs",
-  # "modF_tREsMR",
-  # "modF_tREsPhi",
-  "modF_infPhi",
-  "modF_fixr20",
-  "modF_fixr50",
-  "modF_fixr80"
+  "modF_lowRK",
+  "modF_highRK"
 ),
-plotFolder = c("figures/13.fixRecov"),
+plotFolder = c("figures/14.scenarios"),
 returnSumData = TRUE)
 
