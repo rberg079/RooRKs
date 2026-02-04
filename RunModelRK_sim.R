@@ -11,8 +11,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_highRK.rds"
-out.sum <- "modelF_tObs_tR_highRK_sum.txt"
+out.model <- "modelF_tObs_tR_noRecO.rds"
+out.sum <- "modelF_tObs_tR_noRecO_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -134,33 +134,23 @@ myCode <- nimbleCode({
       
       #### Transition matrix ####
       # 1 - alive
-      # 2 - dead by roadkill
-      # 3 - dead by other
-      # 4 - long dead
+      # 2 - new roadkill
+      # 3 - dead (absorbing)
       
       # ALIVE
       trans.mat[i,1,1,t] <- phi[i,t]
+      trans.mat[i,1,2,t] <- (1-phi[i,t]) * R[i,t]     # died by road
+      trans.mat[i,1,3,t] <- (1-phi[i,t]) * (1-R[i,t]) # died by other
+      
+      # NEW ROADKILL
       trans.mat[i,2,1,t] <- 0
-      trans.mat[i,3,1,t] <- 0
-      trans.mat[i,4,1,t] <- 0
-      
-      # DEAD BY ROADKILL
-      trans.mat[i,1,2,t] <- (1-phi[i,t])*R[i,t]
       trans.mat[i,2,2,t] <- 0
+      trans.mat[i,2,3,t] <- 1
+      
+      # DEAD (ABSORBING)
+      trans.mat[i,3,1,t] <- 0
       trans.mat[i,3,2,t] <- 0
-      trans.mat[i,4,2,t] <- 0
-      
-      # DEAD BY OTHER
-      trans.mat[i,1,3,t] <- (1-phi[i,t])*(1-R[i,t])
-      trans.mat[i,2,3,t] <- 0
-      trans.mat[i,3,3,t] <- 0
-      trans.mat[i,4,3,t] <- 0
-      
-      # LONG DEAD
-      trans.mat[i,1,4,t] <- 0
-      trans.mat[i,2,4,t] <- 1
-      trans.mat[i,3,4,t] <- 1
-      trans.mat[i,4,4,t] <- 1
+      trans.mat[i,3,3,t] <- 1
       
     } # t
   } # i
@@ -172,7 +162,7 @@ myCode <- nimbleCode({
   for (i in 1:n.inds){
     for (t in (first[i]+1):n.occasions){
       
-      p[i,t]  <- mean.p[t]   # observation
+      p[i,t]  <- mean.p[t] # observation
       
       #### Observation matrix ####
       # 1 - seen on-site
@@ -180,29 +170,23 @@ myCode <- nimbleCode({
       # 3 - recovered other
       # 4 - undetected
       
-      # SEEN
+      # ALIVE
       obs.mat[i,1,1,t] <- p[i,t]
-      obs.mat[i,2,1,t] <- 0
-      obs.mat[i,3,1,t] <- 0
-      obs.mat[i,4,1,t] <- 0
-      
-      # RECOVERED ROADKILL
       obs.mat[i,1,2,t] <- 0
-      obs.mat[i,2,2,t] <- 1
-      obs.mat[i,3,2,t] <- 0
-      obs.mat[i,4,2,t] <- 0
-      
-      # RECOVERED OTHER
       obs.mat[i,1,3,t] <- 0
-      obs.mat[i,2,3,t] <- 0
-      obs.mat[i,3,3,t] <- 1
-      obs.mat[i,4,3,t] <- 0
-      
-      # UNDETECTED
       obs.mat[i,1,4,t] <- 1-p[i,t]
+      
+      # NEW ROADKILL
+      obs.mat[i,2,1,t] <- 0
+      obs.mat[i,2,2,t] <- 1
+      obs.mat[i,2,3,t] <- 0
       obs.mat[i,2,4,t] <- 0
-      obs.mat[i,3,4,t] <- 0
-      obs.mat[i,4,4,t] <- 1
+      
+      # DEAD (ABSORBING)
+      obs.mat[i,3,1,t] <- 0
+      obs.mat[i,3,2,t] <- 0
+      obs.mat[i,3,3,t] <- 0 # assuming natural death is never recovered
+      obs.mat[i,3,4,t] <- 1 # ... but rather remain forever undetected
       
     } # t
   } # i
@@ -267,7 +251,7 @@ myCode <- nimbleCode({
 # 3 - recovered other
 # 4 - undetected
 
-prepZs <- function(y, first){
+prepZs <- function(y, first, last, id){
   
   n.inds <- nrow(y)
   n.occ  <- ncol(y)
@@ -275,41 +259,38 @@ prepZs <- function(y, first){
   zData  <- matrix(NA, n.inds, n.occ)
   zInits <- matrix(NA, n.inds, n.occ)
   
+  # map observed events to known latent states
+  zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
+  zInits[y == 2] <- NA; zData[y == 2] <- 2  # roadkill
+  zInits[y == 4] <- 3 ; zData[y == 4] <- NA # undetected
+  
   for(i in 1:n.inds){
     f <- first[i]
-    d <- which(y[i, ] %in% c(2, 3))
+    l <- last[i]
+    d <- if(id$Dead[i] == 1) l
+    
+    # if(any(y[i, ] == 2)){
+    #   d <- which(y[i, ] == 2)
+    # }else{
+    #   d <- if(id$Dead[i] == 1) l
+    # }
+    
+    zData[i, f:(l-1)] <- 1
     
     if(length(d) > 0){
-      dTime <- min(d)
-      
-      # before death
-      if(dTime > 1){
-        zData[i, 1:(dTime - 1)] <- 1
-      }
-      
-      # year of death
-      zData[i, dTime] <- y[i, dTime]
-      
-      # after death
-      if(dTime < n.occ){
-        zData[i, (dTime +1):n.occ] <- 4
-      }
-      
+      if(d < n.occ) zData[i, (d + 1):n.occ] <- 3
     }else{
-      zData[i, ] <- 1
-    }
-    
-    # before first capture
-    if(f > 1){
-      zData[i, 1:(f - 1)] <- NA
+      if(l < n.occ) zInits[i, (l + 1):n.occ] <- 3
     }
   }
+  
   zInits[!is.na(zData)] <- NA
+  
   return(list(zInits = zInits,
               zData  = zData))
 }
 
-ZZs <- prepZs(y, first)
+ZZs <- prepZs(y, first, last, id)
 zInits <- ZZs$zInits
 zData <- ZZs$zData
 

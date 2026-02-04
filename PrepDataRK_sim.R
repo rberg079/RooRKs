@@ -105,7 +105,7 @@ prepDataRK <- function(females = T, lowRK){
   id <- id %>% select(ID) %>% left_join(.,eh) %>% select(ID, Dead)
   
   # now that cause of death is stored in the Fate column
-  # replace observations of 0, 2, & 3 with observation state 5
+  # replace observations of 0, 2, & 3 with observation state 4
   # currently 2s are at first October when inds were not alive to be seen
   eh <- eh %>%
     mutate_at(3:20, ~replace(., . == 0, 4)) %>% # 0: recent natural death
@@ -114,39 +114,52 @@ prepDataRK <- function(females = T, lowRK){
     mutate_at(3:20, ~replace(., . == 4, 4))     # 4: emigrant, unknown
   
   # create column Gone with year where each ID is first unobserved
-  # value for Gone is NA for individuals still alive at end of 2025
+  # Gone is NA for individuals still alive & observed in 2025
   suppressWarnings(
-    eh <- eh %>% 
-      rowwise() %>% 
+    eh <- eh %>%
+      rowwise() %>%
       mutate(Gone = max(which(c_across(3:20) == 4)),
              Gone = ifelse(Gone == "-Inf" | ID == 834 | ID == 1125, NA, Gone)) %>%
       ungroup()) # suppose to give -Inf warnings
   
-  # split eh into alive vs dead IDs
-  live <- eh %>% filter(is.na(Gone))
-  dead <- eh %>% filter(!is.na(Gone))
+  # # TO SIMULATE:
+  # # ...low & high roadkill scenarios by assigning fates to disappeared kangaroos
+  # # ...while assuming perfect detection of both road & natural mortalities
+  # 
+  # # split eh into alive vs dead IDs
+  # live <- eh %>% filter(is.na(Gone))
+  # dead <- eh %>% filter(!is.na(Gone))
+  # 
+  # if(lowRK){
+  #   dead <- dead %>%
+  #     mutate(Fate = ifelse(is.na(Fate), 3, Fate))
+  # }else{
+  #   p <- prop.table(table(dead$Fate, useNA = "no"))
+  #   dead <- dead %>%
+  #     mutate(Fate = ifelse(is.na(Fate),
+  #                          sample(c(2, 3),
+  #                                 size = sum(is.na(dead$Fate)),
+  #                                 prob = p[c("2", "3")],
+  #                                 replace = T),
+  #                          Fate))
+  # }
   
-  # TO SIMULATE/ASSUME:
-  # ...that all disappeared individuals died naturally
-  # ...or that the RK:other ratio is the same among disappearances as recoveries
-  if(lowRK){
-    dead <- dead %>% 
-      mutate(Fate = ifelse(is.na(Fate), 3, Fate))
-  }else{
-    p <- prop.table(table(dead$Fate, useNA = "no"))
-    dead <- dead %>% 
-      mutate(Fate = ifelse(is.na(Fate),
-                           sample(c(2, 3),
-                                  size = sum(is.na(dead$Fate)),
-                                  prob = p[c("2", "3")],
-                                  replace = T),
-                           Fate))
-  }
+  # TO SIMULATE:
+  # ...low & high roadkill scenarios by assigning fates to disappeared kangaroos
+  # ...while assuming detection of both road & natural mortalities is impossible
+  # ...(not estimating any recovery probability at all)
+  
+  # split eh into found dead vs not IDs
+  live <- eh %>% filter(Dead == 0)
+  dead <- eh %>% filter(Dead == 1)
+  
+  dead <- dead %>% 
+    mutate(Fate = ifelse(Fate != 2, NA, Fate))
   
   tmp <- dead %>% select(1:2)
-  dead <- dead %>% select(3:22)
+  dead <- dead %>% select(-c(1:2))
   
-  # when Fate is 2 or 3, replace last obs of 1 with Fate
+  # replace last obs of 1 with Fate
   for(i in 1:nrow(dead)) {
     last4 <- max(which(dead[i, 1:18] == 4))
     if(last4 > 0 && !is.na(dead[i, 19])) {
@@ -161,7 +174,7 @@ prepDataRK <- function(females = T, lowRK){
   
   # select relevant columns & replace remaining NAs with obs 4
   eh <- eh %>%
-    select(-Dead) %>% 
+    select(-c(Dead, Fate, Gone)) %>% 
     mutate(across(2:19, ~replace(., is.na(.), 4)))
   
   eh <- eh %>% select(1:19)
@@ -301,7 +314,7 @@ prepDataRK <- function(females = T, lowRK){
   n.ageC <- max(ageC)
   n.occasions <- ncol(y)
   n.obs.states <- 4
-  n.true.states <- 4
+  n.true.states <- 3
   
   # assemble list
   dataRK <- list(
