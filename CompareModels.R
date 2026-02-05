@@ -185,21 +185,21 @@ CompareModels <- function(nYear = 17,
                    # 'mean.rO'
                    ),
 
-    ParamLabels = c('Survival probability (1)',
-                    'Survival probability (2)',
-                    'Survival probability (3-6)',
-                    'Survival probability (7-9)',
-                    'Survival probability (10+)',
-                    # 'Movement probability (1)',
-                    # 'Movement probability (2)',
-                    # 'Movement probability (3-6)',
-                    # 'Movement probability (7-9)',
-                    # 'Movement probability (10+)', 
-                    'Roadkill probability (1)',
-                    'Roadkill probability (2)',
-                    'Roadkill probability (3-6)',
-                    'Roadkill probability (7-9)',
-                    'Roadkill probability (10+)',
+    ParamLabels = c('Survival probability (age 1)',
+                    'Survival probability (age 2)',
+                    'Survival probability (age 3-6)',
+                    'Survival probability (age 7-9)',
+                    'Survival probability (age 10+)',
+                    # 'Movement probability (age 1)',
+                    # 'Movement probability (age 2)',
+                    # 'Movement probability (age 3-6)',
+                    # 'Movement probability (age 7-9)',
+                    # 'Movement probability (age 10+)', 
+                    'Roadkill probability (age 1)',
+                    'Roadkill probability (age 2)',
+                    'Roadkill probability (age 3-6)',
+                    'Roadkill probability (age 7-9)',
+                    'Roadkill probability (age 10+)',
                     'Detection')
                     # 'Recovery (roadkill)',
                     # 'Recovery (other)')
@@ -241,6 +241,7 @@ CompareModels <- function(nYear = 17,
         scale_color_manual(values = plotCols) +
         scale_x_continuous(breaks = c(minYear:maxYear)) +
         ggtitle(plot.TS$ParamLabels[x]) +
+        ylim(0, 1) +
         theme_bw() +
         theme(panel.grid.minor = element_blank(),
               panel.grid.major.y = element_blank(),

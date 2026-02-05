@@ -1,18 +1,16 @@
 #' Prepare data for road mortality model
 #'
 #' @param females logical. If TRUE, data is prepped for female kangaroos only. females = TRUE by default.
-#' @param lowRK logical. If TRUE, data is prepped for low roadkill scenario, assuming all disappearances are natural deaths.
 #'
 #' @returns a list containing all data & constants needed for known-fate road mortality models.
 #' @export
 #'
 #' @examples
 
-prepDataRK <- function(females = T, lowRK){
+prepDataRK <- function(females = T){
   
   # # for testing purposes
   # females = TRUE
-  # lowRK = TRUE
   
   library(readxl)
   library(tidyverse)
@@ -80,8 +78,7 @@ prepDataRK <- function(females = T, lowRK){
   # OBSERVATION STATES
   # 1 - seen
   # 2 - recovered roadkill
-  # 3 - recovered other
-  # 4 - undetected
+  # 3 - undetected
   
   # gather ID & which were found dead
   id <- left_join(id, surv) %>% 
@@ -102,16 +99,17 @@ prepDataRK <- function(females = T, lowRK){
   # SPECIAL CASES: change Dead to 1 for handful of RKs
   # that were not recovered according to survival file
   eh <- eh %>% mutate(Dead = ifelse(!is.na(Fate), 1, Dead))
-  id <- id %>% select(ID) %>% left_join(., eh) %>% select(ID, Dead, Fate)
+  id <- id %>% select(ID) %>% left_join(., eh) %>% select(ID, Dead)
   
   # now that cause of death is stored in the Fate column
   # replace observations of 0, 2, & 3 with observation state 4
   # currently 2s are at first October when inds were not alive to be seen
   eh <- eh %>%
-    mutate_at(3:20, ~replace(., . == 0, 2)) %>% # 0: recent natural death
-    mutate_at(3:20, ~replace(., . == 2, 2)) %>% # 2: recent roadkill
+    mutate_at(3:20, ~replace(., . == 0, 4)) %>% # 0: new natural death
+    mutate_at(3:20, ~replace(., . == 2, 4)) %>% # 2: new roadkill
     mutate_at(3:20, ~replace(., . == 3, 1)) %>% # 3: seen off site
-    mutate_at(3:20, ~replace(., . == 4, 2))     # 4: emigrant, unknown
+    mutate_at(3:20, ~replace(., . == 4, 4))     # 4: undetected emigrant
+         
   
   # create column Gone with year where each ID is first unobserved
   # Gone is NA for individuals still alive & observed in 2025
@@ -122,60 +120,24 @@ prepDataRK <- function(females = T, lowRK){
              Gone = ifelse(Gone == "-Inf" | ID == 834 | ID == 1125, NA, Gone)) %>%
       ungroup()) # suppose to give -Inf warnings
   
-  # # TO SIMULATE:
-  # # ...low & high roadkill scenarios by assigning fates to disappeared kangaroos
-  # # ...while assuming perfect detection of both road & natural mortalities
-  # 
-  # # split eh into alive vs dead IDs
-  # live <- eh %>% filter(is.na(Gone))
-  # dead <- eh %>% filter(!is.na(Gone))
-  # 
-  # if(lowRK){
-  #   dead <- dead %>%
-  #     mutate(Fate = ifelse(is.na(Fate), 3, Fate))
-  # }else{
-  #   p <- prop.table(table(dead$Fate, useNA = "no"))
-  #   dead <- dead %>%
-  #     mutate(Fate = ifelse(is.na(Fate),
-  #                          sample(c(2, 3),
-  #                                 size = sum(is.na(dead$Fate)),
-  #                                 prob = p[c("2", "3")],
-  #                                 replace = T),
-  #                          Fate))
-  # }
+  # replace last observation with Fate
+  for(i in 1:nrow(eh)) {
+    fate <- eh$Fate
+    gone <- eh$Gone
+    
+    if(!is.na(gone[i]) && !is.na(fate[i])) {
+      eh[i, gone[i]+1] <- fate[i]
+    }
+  }
   
-  # TO SIMULATE:
-  # ...low & high roadkill scenarios by assigning fates to disappeared kangaroos
-  # ...while assuming detection of both road & natural mortalities is impossible
-  # ...(not estimating any recovery probability at all)
+  # select relevant columns
+  # replace remaining NAs with obs 4
+  id <- cbind(id, fate, gone)
+  remove(i, fate, gone)
   
-  # # split eh into found dead vs not IDs
-  # live <- eh %>% filter(Dead == 0)
-  # dead <- eh %>% filter(Dead == 1)
-  # 
-  # dead <- dead %>% 
-  #   mutate(Fate = ifelse(Fate != 2, NA, Fate))
-  # 
-  # tmp <- dead %>% select(1:2)
-  # dead <- dead %>% select(-c(1:2))
-  # 
-  # # replace last obs of 1 with Fate
-  # for(i in 1:nrow(dead)) {
-  #   last4 <- max(which(dead[i, 1:18] == 4))
-  #   if(last4 > 0 && !is.na(dead[i, 19])) {
-  #     dead[i, last4-1] <- dead[i, 19]
-  #   }
-  # }
-  # 
-  # # group alive & dead IDs back into one eh
-  # dead <- cbind(tmp, dead)
-  # eh <- rbind(dead, live) %>% arrange(ID)
-  # remove(i, last4, dead, live, tmp)
-  
-  # select relevant columns & replace remaining NAs with obs 4
   eh <- eh %>%
     select(-c(Dead, Fate, Gone)) %>% 
-    mutate(across(2:19, ~replace(., is.na(.), 2)))
+    mutate(across(2:19, ~replace(., is.na(.), 4)))
   
   # eh <- eh %>% select(1:19)
   # write_csv(eh, "eh.csv")
@@ -239,7 +201,6 @@ prepDataRK <- function(females = T, lowRK){
   tmp[tmp < 0] <- NA
   age <- tmp
   remove(tmp, i, j, surv)
-  
   # write_csv(age, "ageF.csv")
   
   age <- as.matrix(age)
@@ -278,15 +239,15 @@ prepDataRK <- function(females = T, lowRK){
   
   ## Assemble data list --------------------------------------------------------
   
-  y <- eh[,-1] %>% as.matrix() %>% unname()
+  y <- as.matrix(unname(eh[,-1]))
   
-  # to remove observations of YAFs
-  y[age == 0] <- 999
+  y[age == 0] <- 999  # YAFs are not observed
+  
   
   # extract first & last
   # create vector with occasion of first capture
   get.first <- function(x) min(which(x != 999))
-  get.last  <- function(x) max(which(x == 1)) # OR x < 4
+  get.last  <- function(x) max(which(x < 4))
   
   first <- apply(y, 1, get.first)
   last  <- apply(y, 1, get.last)
@@ -306,6 +267,7 @@ prepDataRK <- function(females = T, lowRK){
   y <- y[-c(unkAge, badFirst), ]
   id <- id[-c(unkAge, badFirst), ]
   age <- age[-c(unkAge, badFirst), ]
+  eh <- eh[-c(unkAge, badFirst), ]
   
   first <- apply(y, 1, get.first)
   last  <- apply(y, 1, get.last)
@@ -313,19 +275,20 @@ prepDataRK <- function(females = T, lowRK){
   n.inds <- nrow(id)
   n.ageC <- max(ageC)
   n.occasions <- ncol(y)
-  n.obs.states <- 2
+  n.obs.states <- 3
   n.true.states <- 4
   
   # assemble list
   dataRK <- list(
-    y = y,
+    eh = eh,
     id = id,
-    # obs = obs,
-    # env = env,
+    y = y,
     age = age,
     ageC = ageC,
     first = first,
     last = last,
+    # obs = obs,
+    # env = env,
     
     # veg = veg,
     # dens = dens,

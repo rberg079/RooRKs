@@ -5,14 +5,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-lowRK <- FALSE
 females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_noRecR.rds"
-out.sum <- "modelF_tObs_tR_noRecR_sum.txt"
+out.model <- "modelF_tObs_tR_noRecO.rds"
+out.sum <- "modelF_tObs_tR_noRecO_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -36,7 +35,7 @@ library(tidyverse)
 
 # load data
 source("PrepDataRK_sim.R")
-dataRK <- prepDataRK(females = females, lowRK = lowRK)
+dataRK <- prepDataRK(females = females)
 list2env(dataRK, envir = .GlobalEnv)
 
 # # or...
@@ -135,7 +134,8 @@ myCode <- nimbleCode({
       #### Transition matrix ####
       # 1 - alive
       # 2 - new roadkill
-      # 3 - dead (absorbing)
+      # 3 - new other death
+      # 4 - long dead (absorbing)
       
       # ALIVE
       trans.mat[i,1,1,t] <- phi[i,t]
@@ -175,23 +175,30 @@ myCode <- nimbleCode({
       
       #### Observation matrix ####
       # 1 - seen
+      # 2 - recovered roadkill
       # 2 - undetected
       
       # ALIVE
       obs.mat[i,1,1,t] <- p[i,t]
-      obs.mat[i,1,2,t] <- 1-p[i,t]
+      obs.mat[i,1,2,t] <- 0
+      obs.mat[i,1,3,t] <- 1-p[i,t]
       
       # NEW ROADKILL
       obs.mat[i,2,1,t] <- 0
       obs.mat[i,2,2,t] <- 1
+      obs.mat[i,2,3,t] <- 0
       
       # NEW OTHER DEATH
       obs.mat[i,3,1,t] <- 0
-      obs.mat[i,3,2,t] <- 1
+      obs.mat[i,3,2,t] <- 0
+      obs.mat[i,3,3,t] <- 1
       
-      # DEAD (ABSORBING)
-      obs.mat[i,4,1,t] <- 0 # assuming no one is recovered
-      obs.mat[i,4,2,t] <- 1 # all rather remain undetected
+      # LONG DEAD (ABSORBING)
+      obs.mat[i,4,1,t] <- 0
+      obs.mat[i,4,2,t] <- 0
+      obs.mat[i,4,3,t] <- 1
+      # assuming other deaths are not recovered
+      # but rather disappear & remain undetected
       
     } # t
   } # i
@@ -246,44 +253,39 @@ myCode <- nimbleCode({
 
 # LATENT STATES
 # 1 - alive
-# 2 - dead by roadkill
-# 3 - dead by other
-# 4 - long dead
+# 2 - new roadkill
+# 3 - new other death
+# 4 - long dead (absorbing)
 
 # OBSERVATION CODES
 # 1 - seen alive
 # 2 - recovered roadkill
-# 3 - recovered other
-# 4 - undetected
+# 3 - undetected
 
 prepZs <- function(y, first, last, id){
   
-  n.inds <- nrow(y)
-  n.occ  <- ncol(y)
-  
-  zData  <- matrix(NA, n.inds, n.occ)
-  zInits <- matrix(NA, n.inds, n.occ)
+  zData  <- y
+  zInits <- y
   
   # map observed events to known latent states
-  # zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
-  # zInits[y == 2] <- NA; zData[y == 2] <- 2  # roadkill
-  # zInits[y == 3] <- NA; zData[y == 3] <- 3  # other death
-  # zInits[y == 4] <- 1 ; zData[y == 4] <- NA # undetected
+  zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
+  zInits[y == 2] <- NA; zData[y == 2] <- 2  # roadkill
+  zInits[y == 3] <- NA; zData[y == 3] <- 3  # other death
+  zInits[y == 4] <- 1 ; zData[y == 4] <- NA # undetected
   
-  zData[y == 1] <- 1
-  
-  for(i in 1:n.inds){
+  for(i in 1:nrow(y)){
     f <- first[i]
     l <- last[i]
-    d <- if(!is.na(id$Fate[i])) l
+    
+    fate <- id$fate[i]
+    gone <- id$gone[i]
     
     zInits[i, f:(l-1)] <- 1
     
-    if(length(d) > 0){
-      zData[i, d] <- id$Fate[i]
-      if(d < n.occ) zData[i, (d + 1):n.occ] <- 4
+    if(!is.na(fate)){
+      if(gone <= ncol(y)) zData[i, gone:ncol(y)] <- 4 # disappeared roos w known fates
     }else{
-      if(l < n.occ) zInits[i, (l + 1):n.occ] <- 4
+      if(l < ncol(y)) zInits[i, (l + 1):ncol(y)] <- 4 # disappeared roos w unknown fates
     }
   }
   
@@ -297,8 +299,8 @@ ZZs <- prepZs(y, first, last, id)
 zInits <- ZZs$zInits
 zData <- ZZs$zData
 
-y[zData == 2] <- 2
-y[zData == 3] <- 2
+y[y == 4] <- 3
+y[y == 999] <- NA
 
 
 ## Assemble --------------------------------------------------------------------
@@ -318,7 +320,6 @@ myInits <- list(
 )
 
 # Data
-y[y == 999] <- NA
 myData <- list(y = y, 
                z = zData, 
                age = age,
@@ -584,12 +585,12 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c(
-  "results/modelF_tObs_tR_lowRK.rds",
-  "results/modelF_tObs_tR_highRK.rds"
+  "results/modelF_tObs_tR_noRec.rds",
+  "results/modelF_tObs_tR_noRecO.rds"
 ),
 modelNames = c(
-  "modF_lowRK",
-  "modF_highRK"
+  "modF_highRK",
+  "modF_lowRK"
 ),
 plotFolder = c("figures/14.scenarios"),
 returnSumData = TRUE)
