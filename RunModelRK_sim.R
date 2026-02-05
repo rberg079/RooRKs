@@ -11,8 +11,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_noRecO.rds"
-out.sum <- "modelF_tObs_tR_noRecO_sum.txt"
+out.model <- "modelF_tObs_tR_noRecR.rds"
+out.sum <- "modelF_tObs_tR_noRecR_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -141,16 +141,25 @@ myCode <- nimbleCode({
       trans.mat[i,1,1,t] <- phi[i,t]
       trans.mat[i,1,2,t] <- (1-phi[i,t]) * R[i,t]     # died by road
       trans.mat[i,1,3,t] <- (1-phi[i,t]) * (1-R[i,t]) # died by other
+      trans.mat[i,1,4,t] <- 0
       
       # NEW ROADKILL
       trans.mat[i,2,1,t] <- 0
       trans.mat[i,2,2,t] <- 0
-      trans.mat[i,2,3,t] <- 1
+      trans.mat[i,2,3,t] <- 0
+      trans.mat[i,2,4,t] <- 1
       
-      # DEAD (ABSORBING)
+      # NEW OTHER DEATH
       trans.mat[i,3,1,t] <- 0
       trans.mat[i,3,2,t] <- 0
-      trans.mat[i,3,3,t] <- 1
+      trans.mat[i,3,3,t] <- 0
+      trans.mat[i,3,4,t] <- 1
+      
+      # LONG DEAD (ABSORBING)
+      trans.mat[i,4,1,t] <- 0
+      trans.mat[i,4,2,t] <- 0
+      trans.mat[i,4,3,t] <- 0
+      trans.mat[i,4,4,t] <- 1
       
     } # t
   } # i
@@ -165,28 +174,24 @@ myCode <- nimbleCode({
       p[i,t]  <- mean.p[t] # observation
       
       #### Observation matrix ####
-      # 1 - seen on-site
-      # 2 - recovered roadkill
-      # 3 - recovered other
-      # 4 - undetected
+      # 1 - seen
+      # 2 - undetected
       
       # ALIVE
       obs.mat[i,1,1,t] <- p[i,t]
-      obs.mat[i,1,2,t] <- 0
-      obs.mat[i,1,3,t] <- 0
-      obs.mat[i,1,4,t] <- 1-p[i,t]
+      obs.mat[i,1,2,t] <- 1-p[i,t]
       
       # NEW ROADKILL
       obs.mat[i,2,1,t] <- 0
       obs.mat[i,2,2,t] <- 1
-      obs.mat[i,2,3,t] <- 0
-      obs.mat[i,2,4,t] <- 0
+      
+      # NEW OTHER DEATH
+      obs.mat[i,3,1,t] <- 0
+      obs.mat[i,3,2,t] <- 1
       
       # DEAD (ABSORBING)
-      obs.mat[i,3,1,t] <- 0
-      obs.mat[i,3,2,t] <- 0
-      obs.mat[i,3,3,t] <- 0 # assuming natural death is never recovered
-      obs.mat[i,3,4,t] <- 1 # ... but rather remain forever undetected
+      obs.mat[i,4,1,t] <- 0 # assuming no one is recovered
+      obs.mat[i,4,2,t] <- 1 # all rather remain undetected
       
     } # t
   } # i
@@ -260,27 +265,25 @@ prepZs <- function(y, first, last, id){
   zInits <- matrix(NA, n.inds, n.occ)
   
   # map observed events to known latent states
-  zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
-  zInits[y == 2] <- NA; zData[y == 2] <- 2  # roadkill
-  zInits[y == 4] <- 3 ; zData[y == 4] <- NA # undetected
+  # zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
+  # zInits[y == 2] <- NA; zData[y == 2] <- 2  # roadkill
+  # zInits[y == 3] <- NA; zData[y == 3] <- 3  # other death
+  # zInits[y == 4] <- 1 ; zData[y == 4] <- NA # undetected
+  
+  zData[y == 1] <- 1
   
   for(i in 1:n.inds){
     f <- first[i]
     l <- last[i]
-    d <- if(id$Dead[i] == 1) l
+    d <- if(!is.na(id$Fate[i])) l
     
-    # if(any(y[i, ] == 2)){
-    #   d <- which(y[i, ] == 2)
-    # }else{
-    #   d <- if(id$Dead[i] == 1) l
-    # }
-    
-    zData[i, f:(l-1)] <- 1
+    zInits[i, f:(l-1)] <- 1
     
     if(length(d) > 0){
-      if(d < n.occ) zData[i, (d + 1):n.occ] <- 3
+      zData[i, d] <- id$Fate[i]
+      if(d < n.occ) zData[i, (d + 1):n.occ] <- 4
     }else{
-      if(l < n.occ) zInits[i, (l + 1):n.occ] <- 3
+      if(l < n.occ) zInits[i, (l + 1):n.occ] <- 4
     }
   }
   
@@ -293,6 +296,9 @@ prepZs <- function(y, first, last, id){
 ZZs <- prepZs(y, first, last, id)
 zInits <- ZZs$zInits
 zData <- ZZs$zData
+
+y[zData == 2] <- 2
+y[zData == 3] <- 2
 
 
 ## Assemble --------------------------------------------------------------------
