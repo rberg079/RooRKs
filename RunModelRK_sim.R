@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_tR_noRecO.rds"
-out.sum <- "modelF_tObs_tR_noRecO_sum.txt"
+out.model <- "modelF_tObs_aV&D_tR_noRecO_wYAFs.rds"
+out.sum <- "modelF_tObs_aV&D_tR_noRecO_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -61,20 +61,27 @@ list2env(dataRK, envir = .GlobalEnv)
 
 # table(y)
 # 
-# rk.count <- sum(y == 3, na.rm = T)
-# other.count <- sum(y == 4, na.rm = T)
+# rk.count <- sum(y == 2, na.rm = T)
+# other.count <- sum(y == 3, na.rm = T)
 # cat("roadkill:", rk.count, "other death:", other.count)
 # cat("roadkill / (roadkill + other death):", rk.count / (rk.count + other.count))
-# 
-# on.site <- sum(y == 1, na.rm = T)
-# off.site <- sum(y == 2, na.rm = T)
-# cat("on-site:", on.site, "off-site:", off.site)
-# cat("off-site / (off-site + on-site):", off.site / (on.site + off.site))
 
 
 ## Model -----------------------------------------------------------------------
 
 myCode <- nimbleCode({
+  
+  ## MISSING VALUES
+  ## ---------------------------------------------------------------------------
+  
+  for (m in 1:nNoVeg){
+    veg[noVeg[m]] ~ dnorm(0, sd = 1)
+    # vegr[noVegR[m]] ~ dnorm(0, sd = 1)
+  } # m
+
+  # dens[noDens[m]] ~ dnorm(0, sd = 1)
+  # win[noWin] ~ dnorm(0, sd = 1)
+  
   
   ## SURVIVAL & MOVEMENT MODELS
   ## ---------------------------------------------------------------------------
@@ -87,8 +94,15 @@ myCode <- nimbleCode({
       eps.R[t]      ~ dnorm(0, tau.R)
       
       # logit-linear functions
-      logit(mean.phi[a, t]) <- logit(mu.phi[a]) + eps.phi[a, t]
-      logit(mean.R[a, t])   <- logit(mu.R[a]) + eps.R[t]
+      logit(mean.phi[a, t]) <- logit(mu.phi[a]) +
+        betaD.phi[a] * dens[t] +
+        betaV.phi[a] * veg[t] +
+        eps.phi[a, t]
+      
+      logit(mean.R[a, t]) <- logit(mu.R[a]) + 
+        betaD.R[a] * dens[t] +
+        betaV.R[a] * veg[t] +
+        eps.R[t]
       
     } # t
   } # a
@@ -214,6 +228,7 @@ myCode <- nimbleCode({
   # hist(rnorm(1000, 0.90, 0.024), xlim = c(0,1)) # phi age 7-9
   # hist(rnorm(1000, 0.70, 0.092), xlim = c(0,1)) # phi age 10+
   # 
+  # hist(rbeta(1000, 12, 12), xlim = c(0,1)) # phi age 0
   # hist(rbeta(1000, 20, 4), xlim = c(0,1))  # phi age 1-2
   # hist(rbeta(1000, 20, 2), xlim = c(0,1))  # phi age 3-6
   # hist(rbeta(1000, 20, 4), xlim = c(0,1))  # phi age 7-9
@@ -221,15 +236,20 @@ myCode <- nimbleCode({
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
+    betaD.phi[a] ~ dnorm(0, 1)
+    betaV.phi[a] ~ dnorm(0, 1)
+    betaD.R[a] ~ dnorm(0, 1)
+    betaV.R[a] ~ dnorm(0, 1)
   } # a
   
   # informative priors on survival
   # based on CJS models in Ecology paper
-  mu.phi[1] ~ dbeta(20, 4)   # 1 year-old subadults
-  mu.phi[2] ~ dbeta(20, 4)   # 2 year-old subadults
-  mu.phi[3] ~ dbeta(20, 2)   # prime-aged adults
-  mu.phi[4] ~ dbeta(20, 4)   # pre-senescent
-  mu.phi[5] ~ dbeta(20, 12)  # senescent
+  mu.phi[1] ~ dbeta(12, 12) # young-at-foot
+  mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
+  mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
+  mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
+  mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
+  mu.phi[6] ~ dbeta(20, 12) # senescent
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
@@ -261,6 +281,8 @@ myCode <- nimbleCode({
 # 1 - seen alive
 # 2 - recovered roadkill
 # 3 - undetected
+
+y[y == 999] <- NA
 
 prepZs <- function(y, first, last, id){
   
@@ -300,39 +322,46 @@ zInits <- ZZs$zInits
 zData <- ZZs$zData
 
 y[y == 4] <- 3
-y[y == 999] <- NA
 
 
 ## Assemble --------------------------------------------------------------------
 
 # Inits
 myInits <- list(
-  z         = zInits,
-  mu.phi    = rbeta(n.ageC, 8, 4),
-  mu.R      = rbeta(n.ageC, 2, 8),
-  mu.p      = rbeta(1, 20, 4),
-  eps.phi   = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
-  eps.R     = rnorm(n.occasions, 0, 0.1),
-  eps.p     = rnorm(n.occasions, 0, 0.1),
-  sigma.phi = rexp(1, 10),
-  sigma.R   = rexp(1, 10),
-  sigma.p   = rexp(1, 10)
+  z          = zInits,
+  mu.phi     = rbeta(n.ageC, 4, 2),
+  mu.R       = rbeta(n.ageC, 2, 8),
+  mu.p       = rbeta(1, 20, 4),
+  betaD.phi  = rnorm(n.ageC, 0, 0.1),
+  betaV.phi  = rnorm(n.ageC, 0, 0.1),
+  betaD.R    = rnorm(n.ageC, 0, 0.1),
+  betaV.R    = rnorm(n.ageC, 0, 0.1),
+  eps.phi    = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
+  eps.R      = rnorm(n.occasions, 0, 0.1),
+  eps.p      = rnorm(n.occasions, 0, 0.1),
+  sigma.phi  = rexp(1, 10),
+  sigma.R    = rexp(1, 10),
+  sigma.p    = rexp(1, 10)
 )
 
 # Data
 myData <- list(y = y, 
                z = zData, 
                age = age,
-               ageC = ageC)
+               ageC = ageC,
+               dens = dens,
+               veg = veg)
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("mu.phi", "mu.R", "mu.p", 
+params <- c("betaVR.phi", "betaVR.R",
+            "mu.phi", "mu.R", "mu.p",
             "mean.phi", "mean.R", "mean.p",
-            "sigma.phi", "sigma.R", "sigma.p")
+            "sigma.phi", "sigma.R", "sigma.p",
+            "veg")
 
 # Constants
 myConst <- list(n.inds = n.inds,
@@ -340,9 +369,9 @@ myConst <- list(n.inds = n.inds,
                 n.occasions = n.occasions,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
-                first = first)
-# noVeg = noVeg
-# nNoVeg = nNoVeg
+                first = first,
+                noVeg = noVeg,
+                nNoVeg = nNoVeg)
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
@@ -356,7 +385,7 @@ if(testRun){
   nthin   <- 1             # thinning
   nchains <- 3             # chains
 }else{
-  nburn   <- 10000         # burn-in
+  nburn   <- 30000         # burn-in
   niter   <- 10000 + nburn # iterations
   nthin   <- 1             # thinning
   nchains <- 3             # chains
@@ -482,7 +511,7 @@ model.summary
 
 # Posterior means vs year
 years <- (1:n.occasions) + 2007
-ageCs <- c("1", "2", "3-6", "7-9", "10+")
+ageCs <- c("0", "1", "2", "3-6", "7-9", "10+")
 
 mcmc.df <- out %>% 
   map(~as.data.frame(as.matrix(.x))) %>% 

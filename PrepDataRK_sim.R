@@ -19,10 +19,10 @@ prepDataRK <- function(females = T){
   
   ## Load & clean up data ------------------------------------------------------
   
-  # yafs <- read_excel("data/RSmain_Jan26.xlsx")
+  yafs <- read_excel("data/RSmain_Jan26.xlsx")
   surv <- read_excel("data/PromSurvivalNov25_RB.xlsx", sheet = "YEARLY SURV")
   # obs <- read_excel("data/PromObs_2008-2024.xlsx")
-  # env <- read_csv("data/Env_Mar25.csv")
+  env <- read_csv("data/Env_Mar25.csv")
   
   # modify column names to read as survived to s20XX
   surv <- surv %>%
@@ -45,6 +45,42 @@ prepDataRK <- function(females = T){
   }
   
   
+  ## YAF survival data ---------------------------------------------------------
+  
+  # filter out the too young/old & the firstborn "twins"
+  # & select YAFs that made it to their first October
+  yafs <- yafs %>% 
+    mutate(Age = as.numeric(Age)) %>% 
+    filter(Exclude == 0,
+           between(Age, 3, 20) | is.na(Age),
+           PYid != 308 & PYid != 340 & PYid != 672 & PYid != 885 & PYid != 900 &
+           PYid != 891 & PYid != 912 & PYid != 1023 & PYid != 1106,
+           SurvOct1 == 1) %>% 
+    select(Year, PYsex, PYid, SurvOct2) %>% 
+    rename(Sex = PYsex, ID = PYid) %>% 
+    mutate(Sex = Sex-1)
+  
+  # select sex
+  if(females){
+    yafs <- yafs %>%
+      filter(Sex == 1) %>%
+      select(-Sex) # females
+  }else{
+    yafs <- yafs %>%
+      filter(Sex == 0) %>%
+      select(-Sex) # males
+  }
+  
+  # align survival to second October
+  # to the corresponding year
+  yafs <- yafs %>% 
+    rename(yafs = SurvOct2) %>% 
+    mutate(Year = Year + 1,
+           yafs = as.numeric(yafs),
+           yafs = ifelse(yafs == 2, NA, yafs)) %>% 
+    filter(!is.na(yafs))
+  
+  
   ## Encounter history ---------------------------------------------------------
   
   # round up survival data
@@ -52,11 +88,33 @@ prepDataRK <- function(females = T){
     select(1,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39) %>%
     mutate("2008" = NA) %>%
     select(1,19,2:18) %>%
-    pivot_longer(-ID, names_to = "Year", values_to = "surv") %>% 
+    pivot_longer(-ID, names_to = "Year", values_to = "eh") %>%
     mutate(Year = as.numeric(Year))
   
-  # complete ID*year pairs
-  # & add 1s at the start of each survival interval
+  # # check for yafs that were recovered dead
+  # # first pull all yafs not already in eh
+  # check <- yafs %>%
+  #   distinct(ID) %>%
+  #   anti_join(eh %>% distinct(ID),
+  #             by = "ID")
+  
+  # then manually check from fine-scale survival data
+  # whether each yaf in check was recovered or disappeared
+  deadYAFs <- c(223, 278, 285, 299, 330, 362, 382, 449, 452, 465, 467, 473, 479,
+                489, 502, 527, 530, 532, 539, 569, 570, 573, 575, 582, 583, 589,
+                590, 592, 593, 599, 605, 606, 615, 622, 628, 632, 634, 642, 681,
+                693, 703, 717, 723, 724, 748, 758, 759, 774, 819, 850,
+                1041, 1051, 1053, 1159, 1261, 1270, 1277, 1293, 1321)
+  
+  # join yafs data
+  eh <- eh %>% 
+    mutate(Year = as.numeric(Year)) %>% 
+    full_join(yafs, by = c("ID", "Year")) %>% 
+    mutate(surv = coalesce(yafs, eh)) %>% 
+    select(ID, Year, surv)
+  
+  # complete ID*year pairs & add 1s
+  # at the start of each survival interval
   eh <- eh %>% 
     complete(ID, Year = 2008:2025) %>%
     arrange(ID, Year) %>%
@@ -83,7 +141,8 @@ prepDataRK <- function(females = T){
   # gather ID & which were found dead
   id <- left_join(id, surv) %>% 
     select(ID, Dead) %>%
-    mutate(Dead = ifelse(!is.na(Dead), 1, 0))
+    mutate(Dead = ifelse(!is.na(Dead), 1, 0),
+           Dead = ifelse(ID %in% deadYAFs, 1, Dead))
   
   eh <- cbind(id, eh)
   
@@ -98,8 +157,16 @@ prepDataRK <- function(females = T){
   
   # SPECIAL CASES: change Dead to 1 for handful of RKs
   # that were not recovered according to survival file
-  eh <- eh %>% mutate(Dead = ifelse(!is.na(Fate), 1, Dead))
-  id <- id %>% select(ID) %>% left_join(., eh) %>% select(ID, Dead)
+  eh <- eh %>%
+    mutate(Dead = ifelse(!is.na(Fate), 1, Dead),
+           `2022` = ifelse(ID == 1293, 0, `2022`))
+  # ID 1293 should have been in the survival file
+  # & therefore gotten a 0 in first year unobserved
+  
+  id <- id %>%
+    select(ID) %>%
+    left_join(., eh) %>%
+    select(ID, Dead)
   
   # now that cause of death is stored in the Fate column
   # replace observations of 0, 2, & 3 with observation state 4
@@ -110,7 +177,6 @@ prepDataRK <- function(females = T){
     mutate_at(3:20, ~replace(., . == 3, 1)) %>% # 3: seen off site
     mutate_at(3:20, ~replace(., . == 4, 4))     # 4: undetected emigrant
          
-  
   # create column Gone with year where each ID is first unobserved
   # Gone is NA for individuals still alive & observed in 2025
   suppressWarnings(
@@ -172,14 +238,14 @@ prepDataRK <- function(females = T){
            "2020" = "Age20", "2021" = "Age21", "2022" = "Age22",
            "2023" = "Age23", "2024" = "Age24")
   
-  # yafs <- yafs %>% 
-  #   pivot_wider(names_from = Year, values_from = yafs) %>% 
-  #   mutate_at(vars(-ID), ~ifelse(!is.na(.), 1, NA)) %>% 
-  #   anti_join(age %>% select(ID), by = "ID") %>% 
-  #   mutate("2008" = NA) %>%
-  #   select(ID, "2008", everything())
-  # 
-  # age <- bind_rows(age, yafs) %>% arrange(ID)
+  yafs <- yafs %>%
+    pivot_wider(names_from = Year, values_from = yafs) %>%
+    mutate_at(vars(-ID), ~ifelse(!is.na(.), 1, NA)) %>%
+    anti_join(age %>% select(ID), by = "ID") %>%
+    mutate("2008" = NA) %>%
+    select(ID, "2008", everything())
+
+  age <- bind_rows(age, yafs) %>% arrange(ID)
   tmp <- age %>% select(2:19)
   
   for (j in 1:nrow(tmp)) {
@@ -200,39 +266,48 @@ prepDataRK <- function(females = T){
   
   tmp[tmp < 0] <- NA
   age <- tmp
-  remove(tmp, i, j, surv)
+  remove(tmp, i, j, surv, yafs, deadYAFs)
   # write_csv(age, "ageF.csv")
   
   age <- as.matrix(age)
   
   # age classes
-  # ageC <- c(0, rep(1,2), rep(2,4), rep(3,3), rep(4,30))+1 # when including YAFs
-  ageC <- c(1, 2, rep(3,4), rep(4,3), rep(5,31)) # when excluding YAFs
+  # when including YAFs
+  age <- age + 1
+  ageC <- c(0, 1, 2, rep(3,4), rep(4,3), rep(5,30)) + 1 
+  
+  # when excluding YAFs
+  # ageC <- c(1, 2, rep(3,4), rep(4,3), rep(5,31))
   
   
   ## Environmental data --------------------------------------------------------
   
-  # env <- env %>% 
-  #   mutate(Year = ifelse(Month < 10, Year-1, Year)) %>% 
-  #   group_by(Year) %>% 
-  #   mutate(Veg = sum(Veg, na.rm = T),
-  #          Dens = mean(Dens, na.rm = T),
-  #          Win = sum(Warn.18, na.rm = T),
-  #          Veg = ifelse(between(Year, 2009, 2023), Veg, NA),
-  #          Dens = ifelse(between(Year, 2008, 2024), Dens, NA),
-  #          Win = ifelse(between(Year, 2008, 2023), Win, NA)) %>%
-  #   distinct(Year, Veg, Dens, Win) %>%
-  #   ungroup()
-  # 
-  # env  <- env[3:19,] # [2008:2024,]
-  # # obs  <- round(as.numeric(scale(obs$n)), 3)
-  # veg  <- round(as.numeric(scale(env$Veg)), 3)
-  # dens <- round(as.numeric(scale(env$Dens)), 3)
-  # win  <- round(as.numeric(scale(env$Win)), 3)
-  # 
-  # noVeg  <- c(as.numeric(which(is.na(veg))));  nNoVeg  <- length(noVeg)
-  # noDens <- c(as.numeric(which(is.na(dens)))); nNoDens <- length(noDens)
-  # noWin  <- c(as.numeric(which(is.na(win))));  nNoWin  <- length(noWin)
+  env <- read_csv("data/Env_Mar25.csv")
+  
+  env <- env %>%
+    mutate(Year = ifelse(Month < 10, Year-1, Year)) %>%
+    group_by(Year) %>%
+    mutate(Veg = sum(Veg, na.rm = T),
+           Dens = mean(Dens, na.rm = T),
+           Win = sum(Warn.18, na.rm = T),
+           Veg = ifelse(between(Year, 2009, 2023), Veg, NA),
+           Dens = ifelse(between(Year, 2008, 2024), Dens, NA),
+           Win = ifelse(between(Year, 2008, 2023), Win, NA)) %>%
+    distinct(Year, Veg, Dens, Win) %>%
+    mutate(VegRoo = Veg/Dens) %>% 
+    ungroup()
+
+  env  <- env[3:19,] # [2008:2024,]
+  # obs  <- round(as.numeric(scale(obs$n)), 3)
+  veg  <- round(as.numeric(scale(env$Veg)), 3)
+  dens <- round(as.numeric(scale(env$Dens)), 3)
+  vegr <- round(as.numeric(scale(env$VegRoo)), 3)
+  win  <- round(as.numeric(scale(env$Win)), 3)
+
+  noVeg  <- c(as.numeric(which(is.na(veg))));  nNoVeg  <- length(noVeg)
+  noDens <- c(as.numeric(which(is.na(dens)))); nNoDens <- length(noDens)
+  noVegR <- c(as.numeric(which(is.na(vegr)))); nNoVegR <- length(noVegR)
+  noWin  <- c(as.numeric(which(is.na(win))));  nNoWin  <- length(noWin)
   
   # write_csv(env, "env.csv")
   
@@ -241,8 +316,7 @@ prepDataRK <- function(females = T){
   
   y <- as.matrix(unname(eh[,-1]))
   
-  y[age == 0] <- 999  # YAFs are not observed
-  
+  # y[age == 0] <- 999  # when excluding YAFs
   
   # extract first & last
   # create vector with occasion of first capture
@@ -290,15 +364,18 @@ prepDataRK <- function(females = T){
     # obs = obs,
     # env = env,
     
-    # veg = veg,
-    # dens = dens,
-    # win = win,
-    # noVeg = noVeg,
-    # noDens = noDens,
-    # noWin = noWin,
-    # nNoVeg = nNoVeg,
-    # nNoDens = nNoDens,
-    # nNoWin = nNoWin,
+    veg = veg,
+    dens = dens,
+    vegr = vegr,
+    win = win,
+    noVeg = noVeg,
+    noDens = noDens,
+    noVegR = noVegR,
+    noWin = noWin,
+    nNoVeg = nNoVeg,
+    nNoDens = nNoDens,
+    nNoVegR = nNoVegR,
+    nNoWin = nNoWin,
     
     n.inds = n.inds,
     n.ageC = n.ageC,
