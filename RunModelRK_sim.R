@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aV&D_tR_noRecO_wYAFs.rds"
-out.sum <- "modelF_tObs_aV&D_tR_noRecO_wYAFs_sum.txt"
+out.model <- "modelF_tObs_aV_tR_noRecO_wYAFs.rds"
+out.sum <- "modelF_tObs_aV_tR_noRecO_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -95,12 +95,12 @@ myCode <- nimbleCode({
       
       # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) +
-        betaD.phi[a] * dens[t] +
+        # betaD.phi[a] * dens[t] +
         betaV.phi[a] * veg[t] +
         eps.phi[a, t]
       
       logit(mean.R[a, t]) <- logit(mu.R[a]) + 
-        betaD.R[a] * dens[t] +
+        # betaD.R[a] * dens[t] +
         betaV.R[a] * veg[t] +
         eps.R[t]
       
@@ -236,9 +236,9 @@ myCode <- nimbleCode({
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
-    betaD.phi[a] ~ dnorm(0, 1)
+    # betaD.phi[a] ~ dnorm(0, 1)
     betaV.phi[a] ~ dnorm(0, 1)
-    betaD.R[a] ~ dnorm(0, 1)
+    # betaD.R[a] ~ dnorm(0, 1)
     betaV.R[a] ~ dnorm(0, 1)
   } # a
   
@@ -332,9 +332,9 @@ myInits <- list(
   mu.phi     = rbeta(n.ageC, 4, 2),
   mu.R       = rbeta(n.ageC, 2, 8),
   mu.p       = rbeta(1, 20, 4),
-  betaD.phi  = rnorm(n.ageC, 0, 0.1),
+  # betaD.phi  = rnorm(n.ageC, 0, 0.1),
   betaV.phi  = rnorm(n.ageC, 0, 0.1),
-  betaD.R    = rnorm(n.ageC, 0, 0.1),
+  # betaD.R    = rnorm(n.ageC, 0, 0.1),
   betaV.R    = rnorm(n.ageC, 0, 0.1),
   eps.phi    = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R      = rnorm(n.occasions, 0, 0.1),
@@ -349,7 +349,7 @@ myData <- list(y = y,
                z = zData, 
                age = age,
                ageC = ageC,
-               dens = dens,
+               # dens = dens,
                veg = veg)
 
 # Parameters to monitor
@@ -357,7 +357,7 @@ myData <- list(y = y,
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("betaVR.phi", "betaVR.R",
+params <- c("betaV.phi", "betaV.R", # "betaD.phi", "betaD.R", 
             "mu.phi", "mu.R", "mu.p",
             "mean.phi", "mean.R", "mean.p",
             "sigma.phi", "sigma.R", "sigma.p",
@@ -600,9 +600,9 @@ MCMCtrace(object = out,
           ind = TRUE, # separate density lines per chain
           Rhat = TRUE, # add Rhat diagnostics
           n.eff = TRUE, # add eff sample size
-          params = c("mu.phi", "mu.R", "mu.p", "mu.rR", "mu.rO",
-                     # "mean.phi", "mean.R", "mean.p", "mean.r",
-                     "sigma.phi", "sigma.R"))
+          params = c("betaD.phi", "betaV.phi", "betaD.R", "betaV.R",
+                     "mu.phi", "mu.R", "mu.p",
+                     "sigma.phi", "sigma.R", "sigma.p"))
 
 # Correlation
 autocorr.diag(out)
