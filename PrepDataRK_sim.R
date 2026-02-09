@@ -409,9 +409,9 @@ prepDataRK <- function(females = T){
   #             by = c("ID", "year")) %>%
   # 
   #   left_join(id, by = "ID") %>%
-  #   count(age, sort = TRUE) %>%
+  #   count(year, age, sort = TRUE) %>%
   #   mutate(age = age-1) %>%
-  #   arrange(age)
+  #   arrange(year, age)
   # 
   # RKtable
   
