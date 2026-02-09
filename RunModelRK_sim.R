@@ -484,7 +484,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-# out.model <- "modelF_tObs_tR_noM2rs.rds"
+# out.model <- "modelF_tObs_aVR_tR_noRecO_wYAFs.rds"
 # out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
@@ -569,7 +569,7 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo effect") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
@@ -581,10 +581,18 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo effect") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
+
+# # Combined figure
+# library(patchwork)
+# RK.V + RK.VD + RK.VR # + plot_layout(nrow = 1)
+# ggsave("figures/RKvsENV.jpeg", width = 36.0, height = 12.0, units = c("cm"), dpi = 600)
+# 
+# S.V + S.VD + S.VR # + plot_layout(nrow = 1)
+# ggsave("figures/SvsENV.jpeg", width = 36.0, height = 12.0, units = c("cm"), dpi = 600)
 
 # Checks
 library(coda)
@@ -614,13 +622,15 @@ coda::crosscorr.plot(out)
 
 source('compareModels.R')
 CompareModels(postPaths = c(
-  "results/modelF_tObs_tR_noRec.rds",
-  "results/modelF_tObs_tR_noRecO.rds"
+  "results/modelF_tObs_aV_tR_noRecO_wYAFs.rds",
+  "results/modelF_tObs_aV&D_tR_noRecO_wYAFs.rds",
+  "results/modelF_tObs_aVR_tR_noRecO_wYAFs.rds"
 ),
 modelNames = c(
-  "modF_highRK",
-  "modF_lowRK"
+  "modF_V",
+  "modF_V&D",
+  "modF_VR"
 ),
-plotFolder = c("figures/14.scenarios"),
+plotFolder = c("figures/15.envCovars"),
 returnSumData = TRUE)
 

@@ -151,14 +151,21 @@ CompareModels <- function(nYear = 17,
   plot.D <- list(
     
     Survival = c(paste0("mu.phi[", plotAges, "]"),
-                 # paste0("B.veg[", plotAges, "]"),
                  "sigma.phi"),
+    
+    SurvCovs = c(paste0("betaV.phi[", plotAges, "]"),
+                 paste0("betaD.phi[", plotAges, "]"),
+                 paste0("betaVR.phi[", plotAges, "]")),
 
     # Movement = c(paste0("mu.M[", plotAges, "]"),
     #              "sigma.M"),
 
     Roadkill = c(paste0("mu.R[", plotAges, "]"),
                  "sigma.R"),
+    
+    RKCovs = c(paste0("betaV.R[", plotAges, "]"),
+               paste0("betaD.R[", plotAges, "]"),
+               paste0("betaVR.R[", plotAges, "]")),
 
     # Observation = c("mu.Pi", "mu.Po",
     #                 "sigma.Pi", "sigma.Po"),

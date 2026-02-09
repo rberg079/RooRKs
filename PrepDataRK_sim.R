@@ -202,7 +202,7 @@ prepDataRK <- function(females = T){
   remove(i, fate, gone)
   
   eh <- eh %>%
-    select(-c(Dead, Fate, Gone)) %>% 
+    select(-c(Dead, Fate, Gone)) %>%
     mutate(across(2:19, ~replace(., is.na(.), 4)))
   
   # eh <- eh %>% select(1:19)
@@ -342,6 +342,24 @@ prepDataRK <- function(females = T){
   id <- id[-c(unkAge, badFirst), ]
   age <- age[-c(unkAge, badFirst), ]
   eh <- eh[-c(unkAge, badFirst), ]
+  
+  # # check sample size
+  # RKtable <- eh %>%
+  #   pivot_longer(-ID, names_to = "year", values_to = "eh") %>%
+  #   filter(eh == 2) %>%
+  # 
+  #   left_join(age %>%
+  #               as.data.frame() %>%
+  #               mutate(ID = eh$ID) %>%
+  #               pivot_longer(-ID, names_to = "year", values_to = "age"),
+  #             by = c("ID", "year")) %>%
+  # 
+  #   left_join(id, by = "ID") %>%
+  #   count(age, sort = TRUE) %>%
+  #   mutate(age = age-1) %>%
+  #   arrange(age)
+  # 
+  # RKtable
   
   first <- apply(y, 1, get.first)
   last  <- apply(y, 1, get.last)
