@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aV_tR_noRecO_wYAFs.rds"
-out.sum <- "modelF_tObs_aV_tR_noRecO_wYAFs_sum.txt"
+out.model <- "modelF_tObs_aV_itX_tR_noRecO_wYAFs.rds"
+out.sum <- "modelF_tObs_aV_itX_tR_noRecO_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -75,15 +75,25 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   for (m in 1:nNoVeg){
-    veg[noVeg[m]] ~ dnorm(0, sd = 1)
-    # vegr[noVegR[m]] ~ dnorm(0, sd = 1)
+    veg[noVeg[m]] ~ dnorm(0, 1)
+    # vegr[noVegR[m]] ~ dnorm(0, 1)
   } # m
 
-  # dens[noDens[m]] ~ dnorm(0, sd = 1)
-  # win[noWin] ~ dnorm(0, sd = 1)
+  # dens[noDens[m]] ~ dnorm(0, 1)
+  # win[noWin] ~ dnorm(0, 1)
+  
+  # for (m in 1:nNoX){
+  #   xmed[noX[m]] ~ dnorm(0, 1)
+  # }
+  
+  for (i in 1:n.inds) {
+    for (t in 1:n.occasions) {
+      xmed[i, t] ~ dnorm(0, sd = 1) 
+    }
+  }
   
   
-  ## SURVIVAL & MOVEMENT MODELS
+  ## SURVIVAL & ROAD MORTALITY MODELS
   ## ---------------------------------------------------------------------------
   
   for (a in 1:n.ageC){
@@ -108,7 +118,7 @@ myCode <- nimbleCode({
   } # a
   
   
-  ## OBSERVATION & RECOVERY MODELS
+  ## OBSERVATION MODEL
   ## ---------------------------------------------------------------------------
   
   for (t in 1:n.occasions){
@@ -142,8 +152,8 @@ myCode <- nimbleCode({
   for (i in 1:n.inds){
     for (t in first[i]:(n.occasions-1)){
       
-      phi[i,t] <- mean.phi[ageC[age[i,t]], t] # survival
-      R[i,t]   <- mean.R[ageC[age[i,t]], t]   # roadkill
+      logit(phi[i,t]) <- logit(mean.phi[ageC[age[i,t]], t]) + betaX.phi * xmed[i,t] # survival
+      logit(R[i,t])   <- logit(mean.R[ageC[age[i,t]], t]) + betaX.R * xmed[i,t]     # roadkill
       
       #### Transition matrix ####
       # 1 - alive
@@ -236,11 +246,16 @@ myCode <- nimbleCode({
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
-    # betaD.phi[a] ~ dnorm(0, 1)
-    betaV.phi[a] ~ dnorm(0, 1)
-    # betaD.R[a] ~ dnorm(0, 1)
-    betaV.R[a] ~ dnorm(0, 1)
+    # betaD.phi[a]  ~ dnorm(0, 1)
+    betaV.phi[a]  ~ dnorm(0, 1)
+    # betaVR.phi[a] ~ dnorm(0, 1)
+    # betaD.R[a]    ~ dnorm(0, 1)
+    betaV.R[a]    ~ dnorm(0, 1)
+    # betaVR.R[a]   ~ dnorm(0, 1)
   } # a
+  
+  betaX.phi ~ dnorm(0, 1)
+  betaX.R   ~ dnorm(0, 1)
   
   # informative priors on survival
   # based on CJS models in Ecology paper
@@ -334,8 +349,12 @@ myInits <- list(
   mu.p       = rbeta(1, 20, 4),
   # betaD.phi  = rnorm(n.ageC, 0, 0.1),
   betaV.phi  = rnorm(n.ageC, 0, 0.1),
+  # betaVR.phi = rnorm(n.ageC, 0, 0.1),
+  betaX.phi  = rnorm(1, 0, 0.1),
   # betaD.R    = rnorm(n.ageC, 0, 0.1),
   betaV.R    = rnorm(n.ageC, 0, 0.1),
+  # betaVR.R   = rnorm(n.ageC, 0, 0.1),
+  betaX.R    = rnorm(1, 0, 0.1),
   eps.phi    = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R      = rnorm(n.occasions, 0, 0.1),
   eps.p      = rnorm(n.occasions, 0, 0.1),
@@ -350,14 +369,17 @@ myData <- list(y = y,
                age = age,
                ageC = ageC,
                # dens = dens,
-               veg = veg)
+               veg = veg,
+               # vegr = vegr,
+               xmed = xmed)
 
 # Parameters to monitor
 # best practice is to only include things that are directly sampled (i.e. have a prior)
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("betaV.phi", "betaV.R", # "betaD.phi", "betaD.R", 
+params <- c("betaV.phi", "betaV.R", # "betaD.phi", "betaD.R", "betaVR.phi", "betaVR.R",
+            "betaX.phi", "betaX.R",
             "mu.phi", "mu.R", "mu.p",
             "mean.phi", "mean.R", "mean.p",
             "sigma.phi", "sigma.R", "sigma.p",
@@ -371,7 +393,9 @@ myConst <- list(n.inds = n.inds,
                 n.obs.states = n.obs.states,
                 first = first,
                 noVeg = noVeg,
-                nNoVeg = nNoVeg)
+                nNoVeg = nNoVeg,
+                noX = noX,
+                nNoX = nNoX)
 
 # # Check that z[, first] is known for all inds...
 # for (ii in 1:n.inds) {
@@ -569,7 +593,7 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo effect") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage & median X effects") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
@@ -581,7 +605,7 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo effect") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage & median X effects") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
@@ -632,5 +656,6 @@ modelNames = c(
   "modF_VR"
 ),
 plotFolder = c("figures/15.envCovars"),
-returnSumData = TRUE)
+returnSumData = TRUE,
+nAgeC = 6)
 
