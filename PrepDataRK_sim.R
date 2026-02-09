@@ -9,8 +9,8 @@
 
 prepDataRK <- function(females = T){
   
-  # # for testing purposes
-  # females = TRUE
+  # for testing purposes
+  females = TRUE
   
   library(readxl)
   library(tidyverse)
@@ -21,7 +21,7 @@ prepDataRK <- function(females = T){
   
   yafs <- read_excel("data/RSmain_Jan26.xlsx")
   surv <- read_excel("data/PromSurvivalNov25_RB.xlsx", sheet = "YEARLY SURV")
-  # obs <- read_excel("data/PromObs_2008-2024.xlsx")
+  obs <- read_excel("data/PromObs_2008-2024.xlsx")
   env <- read_csv("data/Env_Mar25.csv")
   
   # modify column names to read as survived to s20XX
@@ -280,9 +280,59 @@ prepDataRK <- function(females = T){
   # ageC <- c(1, 2, rep(3,4), rep(4,3), rep(5,31))
   
   
-  ## Environmental data --------------------------------------------------------
+  ## X coordinate data ---------------------------------------------------------
   
-  env <- read_csv("data/Env_Mar25.csv")
+  obs <- obs %>% 
+    select(Date, Year, Month, Day, Time, ID, X) %>% 
+    mutate(ttime = format(as.POSIXct(Time), format = "%H:%M"),
+           X = as.numeric(X)) %>% 
+    select(-Time) %>% 
+    rename(Time = ttime) %>% 
+    filter(X < 40000, X > 32000,  # within the realm of reality
+           !is.na(ID), !is.na(X), # only known roos w/ coordinates
+           Month >= 7)            # during the main field season
+  
+  # limit to IDs seen at least 10 times during the year
+  # calculate from those 10+ observations a median X
+  obs <- obs %>%
+    group_by(Year, ID) %>% 
+    mutate(DaysObs = n_distinct(Date)) %>% 
+    ungroup() %>% 
+    group_by(ID, Year) %>% 
+    mutate(xmed = median(X, na.rm = T)) %>% 
+    ungroup() %>% 
+    arrange(ID, Year) %>% 
+    filter(DaysObs >= 10)
+  
+  # hist(obs$X)
+  # hist(obs$xmed)
+  
+  # set up matrix
+  obs <- obs %>% 
+    arrange(Year) %>% 
+    distinct(Year, ID, xmed) %>% 
+    complete(ID, Year = 2008:2025) %>%
+    pivot_wider(names_from = Year, values_from = xmed) %>% 
+    filter(ID %in% id$ID)
+  
+  # impute missing values
+  # for IDs with some xmeds
+  tmp <- obs %>% select(ID)
+  obs <- as.matrix(obs[, 2:19])
+  obs[is.na(obs)] <- rowMeans(obs, na.rm = T)[row(obs)][is.na(obs)]
+  obs <- as.data.frame(obs)
+  tmp <- cbind(tmp, obs)
+  
+  # join with ID
+  xmed <- id %>% 
+    select(ID) %>% 
+    left_join(tmp)
+  remove(tmp, obs)
+  
+  xmed <- scale(as.matrix(xmed[, 2:19]))
+  
+  
+  ## Environmental data --------------------------------------------------------
   
   env <- env %>%
     mutate(Year = ifelse(Month < 10, Year-1, Year)) %>%
@@ -341,7 +391,11 @@ prepDataRK <- function(females = T){
   y <- y[-c(unkAge, badFirst), ]
   id <- id[-c(unkAge, badFirst), ]
   age <- age[-c(unkAge, badFirst), ]
+  xmed <- xmed[-c(unkAge, badFirst),]
   eh <- eh[-c(unkAge, badFirst), ]
+  
+  noX  <- c(as.numeric(which(is.na(xmed))))
+  nNoX <- length(noX)
   
   # # check sample size
   # RKtable <- eh %>%
@@ -379,8 +433,9 @@ prepDataRK <- function(females = T){
     ageC = ageC,
     first = first,
     last = last,
-    # obs = obs,
-    # env = env,
+    xmed = xmed,
+    noX = noX,
+    nNoX = nNoX,
     
     veg = veg,
     dens = dens,
