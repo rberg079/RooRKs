@@ -7,11 +7,11 @@
 # set toggles
 females <- TRUE
 testRun <- FALSE
-parallelRun <- TRUE
+parallelRun <- FALSE
 
 # name outputs
-out.model <- "modelF_tObs_aV_itX_tR_noRecO_wYAFs.rds"
-out.sum <- "modelF_tObs_aV_itX_tR_noRecO_wYAFs_sum.txt"
+out.model <- "modelF_tObs_aV&D_itX_tR_noRecO_wYAFs.rds"
+out.sum <- "modelF_tObs_aV&D_itX_tR_noRecO_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -79,7 +79,6 @@ myCode <- nimbleCode({
     # vegr[noVegR[m]] ~ dnorm(0, 1)
   } # m
 
-  # dens[noDens[m]] ~ dnorm(0, 1)
   # win[noWin] ~ dnorm(0, 1)
   
   # for (m in 1:nNoX){
@@ -105,12 +104,12 @@ myCode <- nimbleCode({
       
       # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) +
-        # betaD.phi[a] * dens[t] +
+        betaD.phi[a] * dens[t] +
         betaV.phi[a] * veg[t] +
         eps.phi[a, t]
       
       logit(mean.R[a, t]) <- logit(mu.R[a]) + 
-        # betaD.R[a] * dens[t] +
+        betaD.R[a] * dens[t] +
         betaV.R[a] * veg[t] +
         eps.R[t]
       
@@ -246,10 +245,10 @@ myCode <- nimbleCode({
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
-    # betaD.phi[a]  ~ dnorm(0, 1)
+    betaD.phi[a]  ~ dnorm(0, 1)
     betaV.phi[a]  ~ dnorm(0, 1)
     # betaVR.phi[a] ~ dnorm(0, 1)
-    # betaD.R[a]    ~ dnorm(0, 1)
+    betaD.R[a]    ~ dnorm(0, 1)
     betaV.R[a]    ~ dnorm(0, 1)
     # betaVR.R[a]   ~ dnorm(0, 1)
   } # a
@@ -347,11 +346,11 @@ myInits <- list(
   mu.phi     = rbeta(n.ageC, 4, 2),
   mu.R       = rbeta(n.ageC, 2, 8),
   mu.p       = rbeta(1, 20, 4),
-  # betaD.phi  = rnorm(n.ageC, 0, 0.1),
+  betaD.phi  = rnorm(n.ageC, 0, 0.1),
   betaV.phi  = rnorm(n.ageC, 0, 0.1),
   # betaVR.phi = rnorm(n.ageC, 0, 0.1),
   betaX.phi  = rnorm(1, 0, 0.1),
-  # betaD.R    = rnorm(n.ageC, 0, 0.1),
+  betaD.R    = rnorm(n.ageC, 0, 0.1),
   betaV.R    = rnorm(n.ageC, 0, 0.1),
   # betaVR.R   = rnorm(n.ageC, 0, 0.1),
   betaX.R    = rnorm(1, 0, 0.1),
@@ -368,7 +367,7 @@ myData <- list(y = y,
                z = zData, 
                age = age,
                ageC = ageC,
-               # dens = dens,
+               dens = dens,
                veg = veg,
                # vegr = vegr,
                xmed = xmed)
@@ -378,7 +377,9 @@ myData <- list(y = y,
 # anything derived can be done post-hoc, unless you want the model to give annual survival
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
-params <- c("betaV.phi", "betaV.R", # "betaD.phi", "betaD.R", "betaVR.phi", "betaVR.R",
+params <- c("betaV.phi", "betaV.R",
+            "betaD.phi", "betaD.R",
+            # "betaVR.phi", "betaVR.R",
             "betaX.phi", "betaX.R",
             "mu.phi", "mu.R", "mu.p",
             "mean.phi", "mean.R", "mean.p",
