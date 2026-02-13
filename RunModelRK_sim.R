@@ -5,13 +5,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- TRUE
+females <- FALSE
 testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds"
-out.sum <- "modelF_tObs_aVR_itX_tR_noRecO_wYAFs_sum.txt"
+out.model <- "modelM_tObs_aV_itX_tR_noRecO_wYAFs.rds"
+out.sum <- "modelM_tObs_aV_itX_tR_noRecO_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -75,15 +75,15 @@ myCode <- nimbleCode({
   ## ---------------------------------------------------------------------------
   
   for (m in 1:nNoVegR){
-    # veg[noVeg[m]] ~ dnorm(0, 1)
-    vegr[noVegR[m]] ~ dnorm(0, 1)
+    veg[noVeg[m]] ~ dnorm(0, 1)
+    # vegr[noVegR[m]] ~ dnorm(0, 1)
   } # m
 
   # win[noWin] ~ dnorm(0, 1)
   
   for (i in 1:n.inds) {
     for (t in 1:n.occasions) {
-      xmed[i, t] ~ dnorm(0, sd = 1) 
+      xmed[i, t] ~ dnorm(0, sd = 1)
     }
   }
   
@@ -100,15 +100,15 @@ myCode <- nimbleCode({
       
       # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) +
-        # betaV.phi[a] * veg[t] +
+        betaV.phi[a] * veg[t] +
         # betaD.phi[a] * dens[t] +
-        betaVR.phi[a] * vegr[t] +
+        # betaVR.phi[a] * vegr[t] +
         eps.phi[a, t]
       
       logit(mean.R[a, t]) <- logit(mu.R[a]) + 
-        # betaV.R[a] * veg[t] +
+        betaV.R[a] * veg[t] +
         # betaD.R[a] * dens[t] +
-        betaVR.R[a] * vegr[t] +
+        # betaVR.R[a] * vegr[t] +
         eps.R[t]
       
     } # t
@@ -240,15 +240,21 @@ myCode <- nimbleCode({
   # hist(rbeta(1000, 20, 2), xlim = c(0,1))  # phi age 3-6
   # hist(rbeta(1000, 20, 4), xlim = c(0,1))  # phi age 7-9
   # hist(rbeta(1000, 20, 12), xlim = c(0,1)) # phi age 10+
+  # 
+  # hist(rbeta(1000, 12, 16), xlim = c(0,1)) # phi age 0
+  # hist(rbeta(1000, 20, 6), xlim = c(0,1))  # phi age 1-2
+  # hist(rbeta(1000, 20, 4), xlim = c(0,1))  # phi age 3-6
+  # hist(rbeta(1000, 20, 8), xlim = c(0,1))  # phi age 7-9
+  # hist(rbeta(1000, 20, 14), xlim = c(0,1)) # phi age 10+
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
     # betaD.phi[a]  ~ dnorm(0, 1)
-    # betaV.phi[a]  ~ dnorm(0, 1)
-    betaVR.phi[a] ~ dnorm(0, 1)
+    betaV.phi[a]  ~ dnorm(0, 1)
+    # betaVR.phi[a] ~ dnorm(0, 1)
     # betaD.R[a]    ~ dnorm(0, 1)
-    # betaV.R[a]    ~ dnorm(0, 1)
-    betaVR.R[a]   ~ dnorm(0, 1)
+    betaV.R[a]    ~ dnorm(0, 1)
+    # betaVR.R[a]   ~ dnorm(0, 1)
   } # a
   
   betaX.phi ~ dnorm(0, 1)
@@ -256,16 +262,26 @@ myCode <- nimbleCode({
   
   # informative priors on survival
   # based on CJS models in Ecology paper
-  mu.phi[1] ~ dbeta(12, 12) # young-at-foot
-  mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
-  mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
-  mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
-  mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
-  mu.phi[6] ~ dbeta(20, 12) # senescent
+  # # females:
+  # mu.phi[1] ~ dbeta(12, 12) # young-at-foot
+  # mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
+  # mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
+  # mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
+  # mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
+  # mu.phi[6] ~ dbeta(20, 12) # senescent
+  
+  # males:
+  mu.phi[1] ~ dbeta(12, 16) # young-at-foot
+  mu.phi[2] ~ dbeta(20, 6)  # 1 year-old subadults
+  mu.phi[3] ~ dbeta(20, 6)  # 2 year-old subadults
+  mu.phi[4] ~ dbeta(20, 4)  # prime-aged adults
+  mu.phi[5] ~ dbeta(20, 8)  # pre-senescent
+  mu.phi[6] ~ dbeta(20, 14) # senescent
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
-  mu.p  ~ dbeta(20, 4)
+  # mu.p  ~ dbeta(20, 4) # females
+  mu.p  ~ dbeta(20, 6) # males
   
   # sigma.phi ~ dexp(10)
   # sigma.R   ~ dexp(10)
@@ -356,12 +372,12 @@ myInits <- list(
   mu.R       = rbeta(n.ageC, 2, 8),
   mu.p       = rbeta(1, 20, 4),
   # betaD.phi  = rnorm(n.ageC, 0, 0.1),
-  # betaV.phi  = rnorm(n.ageC, 0, 0.1),
-  betaVR.phi = rnorm(n.ageC, 0, 0.1),
+  betaV.phi  = rnorm(n.ageC, 0, 0.1),
+  # betaVR.phi = rnorm(n.ageC, 0, 0.1),
   betaX.phi  = rnorm(1, 0, 0.1),
   # betaD.R    = rnorm(n.ageC, 0, 0.1),
-  # betaV.R    = rnorm(n.ageC, 0, 0.1),
-  betaVR.R   = rnorm(n.ageC, 0, 0.1),
+  betaV.R    = rnorm(n.ageC, 0, 0.1),
+  # betaVR.R   = rnorm(n.ageC, 0, 0.1),
   betaX.R    = rnorm(1, 0, 0.1),
   eps.phi    = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R      = rnorm(n.occasions, 0, 0.1),
@@ -377,8 +393,8 @@ myData <- list(y = y,
                age = age,
                ageC = ageC,
                # dens = dens,
-               # veg = veg,
-               vegr = vegr,
+               veg = veg,
+               # vegr = vegr,
                xmed = xmed)
 
 # Parameters to monitor
@@ -387,14 +403,14 @@ myData <- list(y = y,
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
 params <- c(
-  # "betaV.phi", "betaV.R",
+  "betaV.phi", "betaV.R",
   # "betaD.phi", "betaD.R",
-  "betaVR.phi", "betaVR.R",
+  # "betaVR.phi", "betaVR.R",
   "betaX.phi", "betaX.R",
   "mu.phi", "mu.R", "mu.p",
   "mean.phi", "mean.R", "mean.p",
   "sigma.phi", "sigma.R", "sigma.p",
-  "vegr"
+  "veg"
 )
 
 # Constants
@@ -404,10 +420,10 @@ myConst <- list(n.inds = n.inds,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
                 first = first,
-                # noVeg = noVeg,
-                # nNoVeg = nNoVeg,
-                noVegR = noVegR,
-                nNoVegR = nNoVegR,
+                noVeg = noVeg,
+                nNoVeg = nNoVeg,
+                # noVegR = noVegR,
+                # nNoVegR = nNoVegR,
                 noX = noX,
                 nNoX = nNoX)
 
@@ -522,8 +538,8 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-out.model <- "modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds"
-out <- readRDS(paste0("results/", out.model))
+# out.model <- "modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds"
+# out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
@@ -607,7 +623,7 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo & median X effects") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "Road mortality") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
@@ -621,7 +637,7 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo & median X effects") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "Survival") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
