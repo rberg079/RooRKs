@@ -74,10 +74,13 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  for (m in 1:nNoVegR){
+  for (m in 1:nNoVeg){
     veg[noVeg[m]] ~ dnorm(0, 1)
-    # vegr[noVegR[m]] ~ dnorm(0, 1)
   } # m
+  
+  # for (m in 1:nNoVegR){
+  #   vegr[noVegR[m]] ~ dnorm(0, 1)
+  # } # m
 
   # win[noWin] ~ dnorm(0, 1)
   
@@ -538,8 +541,8 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-# out.model <- "modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds"
-# out <- readRDS(paste0("results/", out.model))
+out.model <- "modelM_tObs_aV_itX_tR_noRecO_wYAFs.rds"
+out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
