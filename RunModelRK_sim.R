@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aV_itX_tR_noRecO_wYAFs.rds"
-out.sum <- "modelM_tObs_aV_itX_tR_noRecO_wYAFs_sum.txt"
+out.model <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs.rds"
+out.sum <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -94,23 +94,27 @@ myCode <- nimbleCode({
   ## SURVIVAL & ROAD MORTALITY MODELS
   ## ---------------------------------------------------------------------------
   
+  for (t in 1:(n.occasions-1)){
+    eps.R[t] ~ dnorm(0, tau.R)
+  }
+  
   for (a in 1:n.ageC){
     for (t in 1:(n.occasions-1)){
       
       # random year effect
       eps.phi[a, t] ~ dnorm(0, tau.phi)
-      eps.R[t]      ~ dnorm(0, tau.R)
+      # eps.R[t]      ~ dnorm(0, tau.R)
       
       # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) +
         betaV.phi[a] * veg[t] +
-        # betaD.phi[a] * dens[t] +
+        betaD.phi[a] * dens[t] +
         # betaVR.phi[a] * vegr[t] +
         eps.phi[a, t]
       
       logit(mean.R[a, t]) <- logit(mu.R[a]) + 
         betaV.R[a] * veg[t] +
-        # betaD.R[a] * dens[t] +
+        betaD.R[a] * dens[t] +
         # betaVR.R[a] * vegr[t] +
         eps.R[t]
       
@@ -200,7 +204,7 @@ myCode <- nimbleCode({
       #### Observation matrix ####
       # 1 - seen
       # 2 - recovered roadkill
-      # 2 - undetected
+      # 3 - undetected
       
       # ALIVE
       obs.mat[i,1,1,t] <- p[i,t]
@@ -252,16 +256,20 @@ myCode <- nimbleCode({
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
-    # betaD.phi[a]  ~ dnorm(0, 1)
+    betaD.phi[a]  ~ dnorm(0, 1)
     betaV.phi[a]  ~ dnorm(0, 1)
     # betaVR.phi[a] ~ dnorm(0, 1)
-    # betaD.R[a]    ~ dnorm(0, 1)
+    betaD.R[a]    ~ dnorm(0, 1)
     betaV.R[a]    ~ dnorm(0, 1)
     # betaVR.R[a]   ~ dnorm(0, 1)
   } # a
   
   betaX.phi ~ dnorm(0, 1)
   betaX.R   ~ dnorm(0, 1)
+  
+  # # TO CHECK IF RESPONSIBLE FOR CONVERGENCE CHALLENGES
+  # betaX.phi <- 0
+  # betaX.R   <- 0
   
   # informative priors on survival
   # based on CJS models in Ecology paper
@@ -286,13 +294,14 @@ myCode <- nimbleCode({
   # mu.p  ~ dbeta(20, 4) # females
   mu.p  ~ dbeta(20, 6) # males
   
-  # sigma.phi ~ dexp(10)
-  # sigma.R   ~ dexp(10)
-  # sigma.p   ~ dexp(10)
+  # CHANGING TO DEXP(1) MIGHT HELP CONVERGENCE
+  sigma.phi ~ dexp(10)
+  sigma.R   ~ dexp(10)
+  sigma.p   ~ dexp(10)
   
-  sigma.phi ~ dunif(0, 5)
-  sigma.R   ~ dunif(0, 5)
-  sigma.p   ~ dunif(0, 5)
+  # sigma.phi ~ dunif(0, 5)
+  # sigma.R   ~ dunif(0, 5)
+  # sigma.p   ~ dunif(0, 5)
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.R   <- 1 / (sigma.R * sigma.R)
@@ -374,11 +383,11 @@ myInits <- list(
   mu.phi     = rbeta(n.ageC, 4, 2),
   mu.R       = rbeta(n.ageC, 2, 8),
   mu.p       = rbeta(1, 20, 4),
-  # betaD.phi  = rnorm(n.ageC, 0, 0.1),
+  betaD.phi  = rnorm(n.ageC, 0, 0.1),
   betaV.phi  = rnorm(n.ageC, 0, 0.1),
   # betaVR.phi = rnorm(n.ageC, 0, 0.1),
   betaX.phi  = rnorm(1, 0, 0.1),
-  # betaD.R    = rnorm(n.ageC, 0, 0.1),
+  betaD.R    = rnorm(n.ageC, 0, 0.1),
   betaV.R    = rnorm(n.ageC, 0, 0.1),
   # betaVR.R   = rnorm(n.ageC, 0, 0.1),
   betaX.R    = rnorm(1, 0, 0.1),
@@ -395,7 +404,7 @@ myData <- list(y = y,
                z = zData, 
                age = age,
                ageC = ageC,
-               # dens = dens,
+               dens = dens,
                veg = veg,
                # vegr = vegr,
                xmed = xmed)
@@ -407,7 +416,7 @@ myData <- list(y = y,
 
 params <- c(
   "betaV.phi", "betaV.R",
-  # "betaD.phi", "betaD.R",
+  "betaD.phi", "betaD.R",
   # "betaVR.phi", "betaVR.R",
   "betaX.phi", "betaX.R",
   "mu.phi", "mu.R", "mu.p",
@@ -541,8 +550,8 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-out.model <- "modelM_tObs_aV_itX_tR_noRecO_wYAFs.rds"
-out <- readRDS(paste0("results/", out.model))
+# out.model <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs.rds"
+# out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
 
