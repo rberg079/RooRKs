@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs_dexp1.rds"
-out.sum <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs_dexp1_sum.txt"
+out.model <- "modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1.rds"
+out.sum <- "modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -74,13 +74,13 @@ myCode <- nimbleCode({
   ## MISSING VALUES
   ## ---------------------------------------------------------------------------
   
-  for (m in 1:nNoVeg){
-    veg[noVeg[m]] ~ dnorm(0, 1)
-  } # m
-  
-  # for (m in 1:nNoVegR){
-  #   vegr[noVegR[m]] ~ dnorm(0, 1)
+  # for (m in 1:nNoVeg){
+  #   veg[noVeg[m]] ~ dnorm(0, 1)
   # } # m
+  
+  for (m in 1:nNoVegR){
+    vegr[noVegR[m]] ~ dnorm(0, 1)
+  } # m
 
   # win[noWin] ~ dnorm(0, 1)
   
@@ -107,15 +107,15 @@ myCode <- nimbleCode({
       
       # logit-linear functions
       logit(mean.phi[a, t]) <- logit(mu.phi[a]) +
-        betaV.phi[a] * veg[t] +
-        betaD.phi[a] * dens[t] +
-        # betaVR.phi[a] * vegr[t] +
+        # betaV.phi[a] * veg[t] +
+        # betaD.phi[a] * dens[t] +
+        betaVR.phi[a] * vegr[t] +
         eps.phi[a, t]
       
       logit(mean.R[a, t]) <- logit(mu.R[a]) + 
-        betaV.R[a] * veg[t] +
-        betaD.R[a] * dens[t] +
-        # betaVR.R[a] * vegr[t] +
+        # betaV.R[a] * veg[t] +
+        # betaD.R[a] * dens[t] +
+        betaVR.R[a] * vegr[t] +
         eps.R[t]
       
     } # t
@@ -256,12 +256,12 @@ myCode <- nimbleCode({
   
   for (a in 1:n.ageC){
     mu.R[a] ~ dbeta(2, 8)
-    betaD.phi[a]  ~ dnorm(0, 1)
-    betaV.phi[a]  ~ dnorm(0, 1)
-    # betaVR.phi[a] ~ dnorm(0, 1)
-    betaD.R[a]    ~ dnorm(0, 1)
-    betaV.R[a]    ~ dnorm(0, 1)
-    # betaVR.R[a]   ~ dnorm(0, 1)
+    # betaD.phi[a]  ~ dnorm(0, 1)
+    # betaV.phi[a]  ~ dnorm(0, 1)
+    betaVR.phi[a] ~ dnorm(0, 1)
+    # betaD.R[a]    ~ dnorm(0, 1)
+    # betaV.R[a]    ~ dnorm(0, 1)
+    betaVR.R[a]   ~ dnorm(0, 1)
   } # a
   
   betaX.phi ~ dnorm(0, 1)
@@ -383,13 +383,13 @@ myInits <- list(
   mu.phi     = rbeta(n.ageC, 4, 2),
   mu.R       = rbeta(n.ageC, 2, 8),
   mu.p       = rbeta(1, 20, 4),
-  betaD.phi  = rnorm(n.ageC, 0, 0.1),
-  betaV.phi  = rnorm(n.ageC, 0, 0.1),
-  # betaVR.phi = rnorm(n.ageC, 0, 0.1),
+  # betaD.phi  = rnorm(n.ageC, 0, 0.1),
+  # betaV.phi  = rnorm(n.ageC, 0, 0.1),
+  betaVR.phi = rnorm(n.ageC, 0, 0.1),
   betaX.phi  = rnorm(1, 0, 0.1),
-  betaD.R    = rnorm(n.ageC, 0, 0.1),
-  betaV.R    = rnorm(n.ageC, 0, 0.1),
-  # betaVR.R   = rnorm(n.ageC, 0, 0.1),
+  # betaD.R    = rnorm(n.ageC, 0, 0.1),
+  # betaV.R    = rnorm(n.ageC, 0, 0.1),
+  betaVR.R   = rnorm(n.ageC, 0, 0.1),
   betaX.R    = rnorm(1, 0, 0.1),
   eps.phi    = matrix(rnorm(n.ageC * (n.occasions-1), 0, 0.1), nrow = n.ageC, ncol = n.occasions-1),
   eps.R      = rnorm(n.occasions, 0, 0.1),
@@ -405,8 +405,8 @@ myData <- list(y = y,
                age = age,
                ageC = ageC,
                dens = dens,
-               veg = veg,
-               # vegr = vegr,
+               # veg = veg,
+               vegr = vegr,
                xmed = xmed)
 
 # Parameters to monitor
@@ -415,14 +415,14 @@ myData <- list(y = y,
 # when debugging, could add trans.mat & obs.mat, or even z, etc.
 
 params <- c(
-  "betaV.phi", "betaV.R",
-  "betaD.phi", "betaD.R",
-  # "betaVR.phi", "betaVR.R",
+  # "betaV.phi", "betaV.R",
+  # "betaD.phi", "betaD.R",
+  "betaVR.phi", "betaVR.R",
   "betaX.phi", "betaX.R",
   "mu.phi", "mu.R", "mu.p",
   "mean.phi", "mean.R", "mean.p",
   "sigma.phi", "sigma.R", "sigma.p",
-  "veg"
+  "vegr"
 )
 
 # Constants
@@ -432,10 +432,10 @@ myConst <- list(n.inds = n.inds,
                 n.true.states = n.true.states,
                 n.obs.states = n.obs.states,
                 first = first,
-                noVeg = noVeg,
-                nNoVeg = nNoVeg,
-                # noVegR = noVegR,
-                # nNoVegR = nNoVegR,
+                # noVeg = noVeg,
+                # nNoVeg = nNoVeg,
+                noVegR = noVegR,
+                nNoVegR = nNoVegR,
                 noX = noX,
                 nNoX = nNoX)
 
