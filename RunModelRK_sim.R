@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs.rds"
-out.sum <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs_sum.txt"
+out.model <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs_dexp1.rds"
+out.sum <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs_dexp1_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -295,9 +295,9 @@ myCode <- nimbleCode({
   mu.p  ~ dbeta(20, 6) # males
   
   # CHANGING TO DEXP(1) MIGHT HELP CONVERGENCE
-  sigma.phi ~ dexp(10)
-  sigma.R   ~ dexp(10)
-  sigma.p   ~ dexp(10)
+  sigma.phi ~ dexp(1) # 10
+  sigma.R   ~ dexp(1) # 10
+  sigma.p   ~ dexp(1) # 10
   
   # sigma.phi ~ dunif(0, 5)
   # sigma.R   ~ dunif(0, 5)
@@ -635,12 +635,12 @@ summaries %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   # facet_wrap(~param, scales = "free_y") +
-  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "Road mortality") +
+  labs(x = "Year", y = "Posterior mean (±95% CrI)", colour = "Age class", fill = "Age class", title = "With forage/roo & median X effects") +
   ylim(0, 1) +
   theme_bw() +
   theme(strip.background = element_rect(fill = "grey90", colour = NA))
 
-# ggsave("figures/RlowRK_wVR&X.jpeg", width = 24.0, height = 12.0, units = c("cm"), dpi = 600)
+# ggsave("figures/modM_RlowRK_wVR&X.jpeg", width = 24.0, height = 12.0, units = c("cm"), dpi = 600)
 
 # survival
 summaries %>% 
