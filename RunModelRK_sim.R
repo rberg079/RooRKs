@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1.rds"
-out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_sum.txt"
+out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1.rds"
+out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -369,6 +369,8 @@ prepZs <- function(y, first, last, id){
     fate <- id$fate[i]
     gone <- id$gone[i]
     
+    # undetected between f & l
+    # must be alive but missed
     if(f != l){
       zInits[i, f:(l-1)] <- 1
     }
@@ -378,13 +380,18 @@ prepZs <- function(y, first, last, id){
       # could only be undetected once gone
       if(gone <= ncol(y)) zData[i, gone:ncol(y)] <- 4 
     }else{
-      # disappeared roos w unknown fates
-      # likely died then went undetected
+      # # disappeared roos w unknown fates
+      # # likely died then went undetected
+      # if(l < ncol(y)){
+      #   zInits[i, l + 1] <- 3             # first new death
+      #   if((l + 2) <= ncol(y)){
+      #     zInits[i, (l + 2):ncol(y)] <- 4 # then long dead
+      #   }
+      # }
+      
+      # ...or were alive but missed
       if(l < ncol(y)){
-        zInits[i, l + 1] <- 3             # first new death
-        if((l + 2) <= ncol(y)){
-          zInits[i, (l + 2):ncol(y)] <- 4 # then long dead
-        }
+        zInits[i, (l + 1):ncol(y)] <- 1
       }
     }
   }
@@ -400,8 +407,8 @@ zInits <- ZZs$zInits
 zData <- ZZs$zData
 
 # HIGH RK
-y[zData == 2] <- 2
-y[zData == 3] <- 2
+y[y == 2] <- 2
+y[y == 3] <- 2
 y[y == 4] <- 2
 
 # # LOW RK
