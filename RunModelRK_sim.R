@@ -5,13 +5,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- FALSE
+females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1.rds"
-out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1_sum.txt"
+# out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1.rds"
+# out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -29,6 +29,7 @@ library(patchwork)
 library(postpack)
 library(RColorBrewer)
 library(readxl)
+library(scales)
 library(strex)
 library(tidybayes)
 library(tidyverse)
@@ -591,7 +592,7 @@ MCMCdiag(out,
 
 ## Plots -----------------------------------------------------------------------
 
-# out.model <- "modelM_tObs_aVD_itX_tR_noRecO_wYAFs.rds"
+# out.model <- "modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds"
 # out <- readRDS(paste0("results/", out.model))
 model.summary <- MCMCsummary(object = out, round = 3)
 model.summary
@@ -620,18 +621,18 @@ model.summary
 years <- (1:n.occasions) + 2007
 ageCs <- c("0", "1", "2", "3-6", "7-9", "10+")
 
-mcmc.df <- out %>% 
+mcmc.means <- out %>% 
   map(~as.data.frame(as.matrix(.x))) %>% 
   bind_rows()
 
-mcmc.df <- mcmc.df %>% 
+mcmc.means <- mcmc.means %>% 
   select(starts_with("mean.")) %>% 
   mutate(iter = row_number()) %>% 
   pivot_longer(cols = starts_with("mean."),
                names_to = "param.full",
                values_to = "value")
 
-mcmc.df <- mcmc.df %>% 
+mcmc.means <- mcmc.means %>% 
   mutate(param = str_extract(param.full, "mean\\.[A-Za-z]+"),
          # extract all numbers inside brackets
          index = str_extract_all(param.full, "\\d+"),
@@ -647,7 +648,7 @@ mcmc.df <- mcmc.df %>%
          a = case_when(is_both ~ index1, TRUE ~ NA_real_)) %>% 
   select(iter, param.full, param, a, t, value)
 
-summaries <- mcmc.df %>% 
+summ.means <- mcmc.means %>% 
   group_by(param, a, t) %>% 
   summarise(mean = mean(value, na.rm = TRUE),
             lcl = quantile(value, 0.025, na.rm = TRUE),
@@ -656,8 +657,8 @@ summaries <- mcmc.df %>%
   mutate(year = years[t],
          ageC = factor(ageCs[a], levels = ageCs))
 
-# observation/recovery
-summaries %>% 
+# observation vs year
+summ.means %>% 
   filter(param %in% c("mean.p")) %>% 
   ggplot(., aes(x = year, y = mean, fill = param, colour = param)) +
   geom_line(linewidth = 1) +
@@ -669,8 +670,8 @@ summaries %>%
   theme(legend.position = "none",
         strip.background = element_rect(fill = "grey90", colour = NA))
 
-# roadkill/migration
-summaries %>% 
+# roadkill vs year
+summ.means %>% 
   filter(param %in% c("mean.R")) %>% 
   ggplot(., aes(x = year, y = mean)) +
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
@@ -683,8 +684,8 @@ summaries %>%
 
 # ggsave("figures/modM_RlowRK_wVR&X.jpeg", width = 24.0, height = 12.0, units = c("cm"), dpi = 600)
 
-# survival
-summaries %>% 
+# survival vs year
+summ.means %>% 
   filter(param %in% c("mean.phi")) %>% 
   ggplot(., aes(x = year, y = mean)) +
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
