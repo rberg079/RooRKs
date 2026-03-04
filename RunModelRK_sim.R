@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1.rds"
-out.sum <- "modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1_sum.txt"
+out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1.rds"
+out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -201,32 +201,56 @@ myCode <- nimbleCode({
       
       p[i,t]  <- mean.p[t] # observation
       
+      # #### Observation matrix ####
+      # # LOW ROADKILL SCENARIO:
+      # # 1 - seen
+      # # 2 - recovered roadkill
+      # # 3 - undetected
+      # 
+      # # ALIVE
+      # obs.mat[i,1,1,t] <- p[i,t]
+      # obs.mat[i,1,2,t] <- 0
+      # obs.mat[i,1,3,t] <- 1-p[i,t]
+      # 
+      # # NEW ROADKILL
+      # obs.mat[i,2,1,t] <- 0
+      # obs.mat[i,2,2,t] <- 1
+      # obs.mat[i,2,3,t] <- 0
+      # 
+      # # NEW OTHER DEATH
+      # obs.mat[i,3,1,t] <- 0
+      # obs.mat[i,3,2,t] <- 0
+      # obs.mat[i,3,3,t] <- 1
+      # 
+      # # LONG DEAD (ABSORBING)
+      # obs.mat[i,4,1,t] <- 0
+      # obs.mat[i,4,2,t] <- 0
+      # obs.mat[i,4,3,t] <- 1
+      # # assuming other deaths are not recovered
+      # # but rather disappear & remain undetected
+      
       #### Observation matrix ####
+      # HIGH ROADKILL SCENARIO:
       # 1 - seen
-      # 2 - recovered roadkill
-      # 3 - undetected
+      # 2 - undetected
       
       # ALIVE
       obs.mat[i,1,1,t] <- p[i,t]
-      obs.mat[i,1,2,t] <- 0
-      obs.mat[i,1,3,t] <- 1-p[i,t]
+      obs.mat[i,1,2,t] <- 1-p[i,t]
       
       # NEW ROADKILL
       obs.mat[i,2,1,t] <- 0
       obs.mat[i,2,2,t] <- 1
-      obs.mat[i,2,3,t] <- 0
       
       # NEW OTHER DEATH
       obs.mat[i,3,1,t] <- 0
-      obs.mat[i,3,2,t] <- 0
-      obs.mat[i,3,3,t] <- 1
+      obs.mat[i,3,2,t] <- 1
       
       # LONG DEAD (ABSORBING)
       obs.mat[i,4,1,t] <- 0
-      obs.mat[i,4,2,t] <- 0
-      obs.mat[i,4,3,t] <- 1
-      # assuming other deaths are not recovered
-      # but rather disappear & remain undetected
+      obs.mat[i,4,2,t] <- 1
+      # assuming no one is recovered
+      # all rather remain undetected
       
     } # t
   } # i
@@ -294,14 +318,9 @@ myCode <- nimbleCode({
   # mu.p  ~ dbeta(20, 4) # females
   mu.p  ~ dbeta(20, 6) # males
   
-  # CHANGING TO DEXP(1) MIGHT HELP CONVERGENCE
-  sigma.phi ~ dexp(1) # 10
-  sigma.R   ~ dexp(1) # 10
-  sigma.p   ~ dexp(1) # 10
-  
-  # sigma.phi ~ dunif(0, 5)
-  # sigma.R   ~ dunif(0, 5)
-  # sigma.p   ~ dunif(0, 5)
+  sigma.phi ~ dexp(1) # was 10, 1 helped w convergence
+  sigma.R   ~ dexp(1) # was 10, 1 helped w convergence
+  sigma.p   ~ dexp(1) # was 10, 1 helped w convergence
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.R   <- 1 / (sigma.R * sigma.R)
@@ -321,10 +340,14 @@ myCode <- nimbleCode({
 # 3 - new other death
 # 4 - long dead (absorbing)
 
-# OBSERVATION CODES
+# OBSERVATION CODES (LOW RK)
 # 1 - seen alive
 # 2 - recovered roadkill
 # 3 - undetected
+
+# OBSERVATION CODES (HIGH RK)
+# 1 - seen alive
+# 2 - undetected
 
 y[y == 999] <- NA
 
@@ -337,7 +360,7 @@ prepZs <- function(y, first, last, id){
   zInits[y == 1] <- NA; zData[y == 1] <- 1  # alive
   zInits[y == 2] <- NA; zData[y == 2] <- 2  # roadkill
   zInits[y == 3] <- NA; zData[y == 3] <- 3  # other death
-  zInits[y == 4] <- 1 ; zData[y == 4] <- NA # undetected
+  zInits[y == 4] <- NA; zData[y == 4] <- NA # undetected
   
   for(i in 1:nrow(y)){
     f <- first[i]
@@ -346,17 +369,21 @@ prepZs <- function(y, first, last, id){
     fate <- id$fate[i]
     gone <- id$gone[i]
     
-    zInits[i, f:(l-1)] <- 1
+    if(f != l){
+      zInits[i, f:(l-1)] <- 1
+    }
     
     if(!is.na(fate)){
       # disappeared roos w known fates
+      # could only be undetected once gone
       if(gone <= ncol(y)) zData[i, gone:ncol(y)] <- 4 
     }else{
       # disappeared roos w unknown fates
+      # likely died then went undetected
       if(l < ncol(y)){
         zInits[i, l + 1] <- 3             # first new death
         if((l + 2) <= ncol(y)){
-          zInits[i, (l + 1):ncol(y)] <- 4 # then long dead
+          zInits[i, (l + 2):ncol(y)] <- 4 # then long dead
         }
       }
     }
@@ -372,7 +399,13 @@ ZZs <- prepZs(y, first, last, id)
 zInits <- ZZs$zInits
 zData <- ZZs$zData
 
-y[y == 4] <- 3
+# HIGH RK
+y[zData == 2] <- 2
+y[zData == 3] <- 2
+y[y == 4] <- 2
+
+# # LOW RK
+# y[y == 4] <- 3
 
 
 ## Assemble --------------------------------------------------------------------
@@ -422,6 +455,7 @@ params <- c(
   "mu.phi", "mu.R", "mu.p",
   "mean.phi", "mean.R", "mean.p",
   "sigma.phi", "sigma.R", "sigma.p",
+  # "veg",
   "vegr"
 )
 

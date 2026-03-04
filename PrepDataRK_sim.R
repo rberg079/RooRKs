@@ -421,7 +421,7 @@ prepDataRK <- function(females = T){
   n.inds <- nrow(id)
   n.ageC <- max(ageC)
   n.occasions <- ncol(y)
-  n.obs.states <- 3
+  n.obs.states <- 2
   n.true.states <- 4
   
   # assemble list
