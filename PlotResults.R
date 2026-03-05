@@ -300,7 +300,7 @@ names(oranges) <- paste("High", ageCs, sep = " - ")
 
 colours_fill <- c(greens, oranges)
 
-PHI <- mcmc.musF %>% 
+PHI.F <- mcmc.musF %>% 
   filter(param == "mu.phi") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = scenario_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
@@ -312,15 +312,16 @@ PHI <- mcmc.musF %>%
   scale_x_continuous(limits = c(0.4, 1.0), breaks = c(0.4, 0.6, 0.8, 1.0)) +
   labs(x = "Survival", y = "Age class") +
   theme_bw() +
-  theme(axis.title.y = element_blank(),
-        axis.title = element_text(size = 14),         # axis titles
-        axis.text  = element_text(size = 12),         # axis tick labels
-        legend.title = element_text(size = 14),       # legend title
-        legend.text  = element_text(size = 12)); PHI  # legend labels
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.title = element_text(size = 14),           # axis titles
+        axis.text  = element_text(size = 12),           # axis tick labels
+        legend.title = element_text(size = 14),         # legend title
+        legend.text  = element_text(size = 12)); PHI.F  # legend labels
 
 # ggsave("figures/F&M_PHI_lowRK.jpeg", width = 12.0, height = 20.0, units = c("cm"), dpi = 600)
 
-RK <- mcmc.musF %>% 
+RK.F <- mcmc.musF %>% 
   filter(param == "mu.RK") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = scenario_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
@@ -330,20 +331,21 @@ RK <- mcmc.musF %>%
   scale_fill_manual(values = colours_fill, guide = "none") +
   scale_colour_manual(values = c("Low" = "#3F4733", "High" = "#631E03"), name = NULL) +
   scale_x_continuous(limits = c(0, 0.2), breaks = c(0.0, 0.1, 0.2)) +
-  labs(x = "Road mortality", y = "Age class", title = "Males") +
+  labs(x = "Road mortality", y = "Age class", title = "Females") +
   theme_bw() +
-  theme(title = element_text(size = 16),             # title
-        axis.title = element_text(size = 14),        # axis titles
-        axis.text  = element_text(size = 12),        # axis tick labels
-        legend.title = element_text(size = 14),      # legend title
-        legend.text  = element_text(size = 12)); RK  # legend labels
+  theme(axis.title.x = element_blank(),
+        title = element_text(size = 16),               # title
+        axis.title = element_text(size = 14),          # axis titles
+        axis.text  = element_text(size = 12),          # axis tick labels
+        legend.title = element_text(size = 14),        # legend title
+        legend.text  = element_text(size = 12)); RK.F  # legend labels
 
 # ggsave("figures/F&M_RK_lowRK.jpeg", width = 12.0, height = 20.0, units = c("cm"), dpi = 600)
 
 # combine PHI & RK figures
-RK + PHI + plot_layout(widths = c(0.4, 0.6))
+RK.F + PHI.F + plot_layout(widths = c(0.4, 0.6))
 
-# ggsave("figures/F_PHI&RK_LOWvsHIGH.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
+ggsave("figures/F_PHI&RK_LOWvsHIGH.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
 
 
 ## Plot males ------------------------------------------------------------------
@@ -385,7 +387,7 @@ names(oranges) <- paste("High", ageCs, sep = " - ")
 
 colours_fill <- c(greens, oranges)
 
-PHI <- mcmc.musM %>% 
+PHI.M <- mcmc.musM %>% 
   filter(param == "mu.phi") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = scenario_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
@@ -398,14 +400,14 @@ PHI <- mcmc.musM %>%
   labs(x = "Survival", y = "Age class") +
   theme_bw() +
   theme(axis.title.y = element_blank(),
-        axis.title = element_text(size = 14),         # axis titles
-        axis.text  = element_text(size = 12),         # axis tick labels
-        legend.title = element_text(size = 14),       # legend title
-        legend.text  = element_text(size = 12)); PHI  # legend labels
+        axis.title = element_text(size = 14),           # axis titles
+        axis.text  = element_text(size = 12),           # axis tick labels
+        legend.title = element_text(size = 14),         # legend title
+        legend.text  = element_text(size = 12)); PHI.M  # legend labels
 
 # ggsave("figures/F&M_PHI_lowRK.jpeg", width = 12.0, height = 20.0, units = c("cm"), dpi = 600)
 
-RK <- mcmc.musM %>% 
+RK.M <- mcmc.musM %>% 
   filter(param == "mu.RK") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = scenario_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
@@ -417,17 +419,21 @@ RK <- mcmc.musM %>%
   scale_x_continuous(limits = c(0, 0.4), breaks = c(0.0, 0.2, 0.4)) +
   labs(x = "Road mortality", y = "Age class", title = "Males") +
   theme_bw() +
-  theme(title = element_text(size = 16),             # title
-        axis.title = element_text(size = 14),        # axis titles
-        axis.text  = element_text(size = 12),        # axis tick labels
-        legend.title = element_text(size = 14),      # legend title
-        legend.text  = element_text(size = 12)); RK  # legend labels
+  theme(title = element_text(size = 16),               # title
+        axis.title = element_text(size = 14),          # axis titles
+        axis.text  = element_text(size = 12),          # axis tick labels
+        legend.title = element_text(size = 14),        # legend title
+        legend.text  = element_text(size = 12)); RK.M  # legend labels
 
 # ggsave("figures/F&M_RK_lowRK.jpeg", width = 12.0, height = 20.0, units = c("cm"), dpi = 600)
 
 # combine PHI & RK figures
-library(patchwork)
 RK + PHI + plot_layout(widths = c(0.4, 0.6))
 
 # ggsave("figures/M_PHI&RK_LOWvsHIGH.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
+
+# combine PHI & RK for females & males
+(RK.F + PHI.F + plot_layout(widths = c(0.4, 0.6)))/(RK.M + PHI.M + plot_layout(widths = c(0.4, 0.6)))
+
+# ggsave("figures/F&M_PHI&RK_LOWvsHIGH.jpeg", width = 20.0, height = 24.0, units = c("cm"), dpi = 600)
 
