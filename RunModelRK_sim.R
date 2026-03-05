@@ -9,9 +9,9 @@ females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
-# name outputs
-# out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1.rds"
-# out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1_zInits1_sum.txt"
+# # name outputs
+# out.model <- "modelF_tObs_aVR_itX_tR_noRec_wYAFs.rds"
+# out.sum <- "modelF_tObs_aVR_itX_tR_noRec_wYAFs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -292,36 +292,32 @@ myCode <- nimbleCode({
   betaX.phi ~ dnorm(0, 1)
   betaX.R   ~ dnorm(0, 1)
   
-  # # TO CHECK IF RESPONSIBLE FOR CONVERGENCE CHALLENGES
-  # betaX.phi <- 0
-  # betaX.R   <- 0
-  
   # informative priors on survival
   # based on CJS models in Ecology paper
-  # # females:
-  # mu.phi[1] ~ dbeta(12, 12) # young-at-foot
-  # mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
-  # mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
-  # mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
-  # mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
-  # mu.phi[6] ~ dbeta(20, 12) # senescent
+  # females:
+  mu.phi[1] ~ dbeta(12, 12) # young-at-foot
+  mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
+  mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
+  mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
+  mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
+  mu.phi[6] ~ dbeta(20, 12) # senescent
   
-  # males:
-  mu.phi[1] ~ dbeta(12, 16) # young-at-foot
-  mu.phi[2] ~ dbeta(20, 6)  # 1 year-old subadults
-  mu.phi[3] ~ dbeta(20, 6)  # 2 year-old subadults
-  mu.phi[4] ~ dbeta(20, 4)  # prime-aged adults
-  mu.phi[5] ~ dbeta(20, 8)  # pre-senescent
-  mu.phi[6] ~ dbeta(20, 14) # senescent
+  # # males:
+  # mu.phi[1] ~ dbeta(12, 16) # young-at-foot
+  # mu.phi[2] ~ dbeta(20, 6)  # 1 year-old subadults
+  # mu.phi[3] ~ dbeta(20, 6)  # 2 year-old subadults
+  # mu.phi[4] ~ dbeta(20, 4)  # prime-aged adults
+  # mu.phi[5] ~ dbeta(20, 8)  # pre-senescent
+  # mu.phi[6] ~ dbeta(20, 14) # senescent
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
-  # mu.p  ~ dbeta(20, 4) # females
-  mu.p  ~ dbeta(20, 6) # males
+  mu.p  ~ dbeta(20, 4) # females
+  # mu.p  ~ dbeta(20, 6) # males
   
-  sigma.phi ~ dexp(1) # was 10, 1 helped w convergence
-  sigma.R   ~ dexp(1) # was 10, 1 helped w convergence
-  sigma.p   ~ dexp(1) # was 10, 1 helped w convergence
+  sigma.phi ~ dexp(10) # was 10, 1 helped w convergence
+  sigma.R   ~ dexp(10) # was 10, 1 helped w convergence
+  sigma.p   ~ dexp(10) # was 10, 1 helped w convergence
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.R   <- 1 / (sigma.R * sigma.R)
@@ -381,19 +377,19 @@ prepZs <- function(y, first, last, id){
       # could only be undetected once gone
       if(gone <= ncol(y)) zData[i, gone:ncol(y)] <- 4 
     }else{
-      # # disappeared roos w unknown fates
-      # # likely died then went undetected
-      # if(l < ncol(y)){
-      #   zInits[i, l + 1] <- 3             # first new death
-      #   if((l + 2) <= ncol(y)){
-      #     zInits[i, (l + 2):ncol(y)] <- 4 # then long dead
-      #   }
-      # }
-      
-      # ...or were alive but missed
+      # disappeared roos w unknown fates
+      # likely died then went undetected
       if(l < ncol(y)){
-        zInits[i, (l + 1):ncol(y)] <- 1
+        zInits[i, l + 1] <- 3             # first new death
+        if((l + 2) <= ncol(y)){
+          zInits[i, (l + 2):ncol(y)] <- 4 # then long dead
+        }
       }
+      
+      # # ...or were alive but missed
+      # if(l < ncol(y)){
+      #   zInits[i, (l + 1):ncol(y)] <- 1
+      # }
     }
   }
   
