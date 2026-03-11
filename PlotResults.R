@@ -194,16 +194,32 @@ meansFH <- parseMCMC(meansFH, "Females", "High")
 meansMH <- parseMCMC(meansMH, "Males", "High")
 
 # calculate means & 95% CrIs
-results <- function(df){
+# # FOR AGE EFFECTS ONLY
+# results <- function(df){
+# 
+#   summary <- df %>%
+#     group_by(param, a) %>%
+#     summarise(mean = mean(value, na.rm = T),
+#               lcl = quantile(value, 0.025, na.rm = T),
+#               ucl = quantile(value, 0.975, na.rm = T),
+#               .groups = "drop") %>%
+#     mutate(ageC = factor(ageCs[a], levels = ageCs))
+# 
+#   return(summary)
+# }
 
+# FOR TIME SERIES
+results <- function(df){
+  
   summary <- df %>%
-    group_by(param, a) %>%
+    group_by(param, a, t) %>%
     summarise(mean = mean(value, na.rm = T),
               lcl = quantile(value, 0.025, na.rm = T),
               ucl = quantile(value, 0.975, na.rm = T),
               .groups = "drop") %>%
-    mutate(ageC = factor(ageCs[a], levels = ageCs))
-
+    mutate(ageC = factor(ageCs[a], levels = ageCs),
+           year = years[t])
+  
   return(summary)
 }
 
@@ -212,6 +228,189 @@ summML <- results(meansML)
 
 summFH <- results(meansFH)
 summMH <- results(meansMH)
+
+
+## xMed effect -----------------------------------------------------------------
+
+# randomly sample iterations & bind chains
+sampleChains <- function(mcmc_list, n = 1000){
+  
+  map(mcmc_list, function(chain){
+    mat <- as.matrix(chain)
+    mat[sample(seq_len(nrow(mat)), n), , drop = F]
+  }) %>%
+    map(as.data.frame) %>% 
+    bind_rows()
+}
+
+meansFL <- sampleChains(outFL, n = 1000)
+meansML <- sampleChains(outML, n = 1000)
+
+meansFH <- sampleChains(outFH, n = 1000)
+meansMH <- sampleChains(outMH, n = 1000)
+
+# calculate probability of being roadkilled
+calculateRK <- function(mcmc_df){
+  
+  # identify phi & R columns
+  phi_cols <- grep("^mean.phi\\[", colnames(mcmc_df))
+  R_cols   <- sub("mean.phi", "mean.R", colnames(mcmc_df)[phi_cols])
+  R_cols   <- match(R_cols, colnames(mcmc_df))
+  
+  # compute probabilities
+  mean_die <- 1 - mcmc_df[, phi_cols]
+  mean_RK <- mean_die * mcmc_df[, R_cols]
+  
+  # name columns & bind to original df
+  colnames(mean_die) <- sub("mean.phi", "mean.die", colnames(mean_die))
+  colnames(mean_RK)  <- sub("mean.phi", "mean.RK", colnames(mean_RK))
+  mcmc_df <- cbind(mcmc_df, mean_die, mean_RK)
+  
+  return(mcmc_df)
+}
+
+meansFL <- calculateRK(meansFL)
+meansML <- calculateRK(meansML)
+
+meansFH <- calculateRK(meansFH)
+meansMH <- calculateRK(meansMH)
+
+xGrid <- seq(-2.343521, 2.169987, length.out = 100)
+
+predictRK <- function(mcmc_df, xGrid, sex_label, scenario_label) {
+  
+  betaX_phi <- mcmc_df$betaX.phi
+  betaX_R   <- mcmc_df$betaX.R
+  preds <- list()
+  
+  for(a in 1:n.ageC){
+    phi_cols <- grep(paste0("^mean\\.phi\\[", a, ", "), colnames(mcmc_df), value = TRUE)
+    R_cols   <- grep(paste0("^mean\\.R\\[",   a, ", "), colnames(mcmc_df), value = TRUE)
+    
+    base_phi <- as.matrix(mcmc_df[, phi_cols])
+    base_R   <- as.matrix(mcmc_df[, R_cols])
+    
+    for(x in xGrid) {
+      phi_mat <- plogis(qlogis(base_phi) + betaX_phi * x)
+      R_mat   <- plogis(qlogis(base_phi) + betaX_phi * x)
+      RK_iter <- rowMeans((1 - phi_mat) * R_mat)
+      
+      preds[[length(preds) + 1]] <- data.frame(
+        ageC = factor(ageCs[a], levels = ageCs),
+        xmed = x,
+        mean = mean(RK_iter),
+        lcl  = quantile(RK_iter, 0.025),
+        ucl  = quantile(RK_iter, 0.975),
+        scenario = scenario_label,
+        sex = sex_label
+      )
+    }
+  }
+  return(do.call(rbind, preds))
+}
+
+# generate predictions
+predFL <- predictRK(meansFL, xGrid, "Females", "Low")
+predML <- predictRK(meansML, xGrid, "Males",   "Low")
+
+predFH <- predictRK(meansFH, xGrid, "Females", "High")
+predMH <- predictRK(meansMH, xGrid, "Males",   "High")
+
+preds <- bind_rows(predFL, predML, predFH, predMH)
+preds$scenario <- factor(preds$scenario, levels = c("Low", "High"))
+
+# plot
+xEffect <- preds %>% 
+  ggplot(., aes(x = xmed, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  facet_grid(sex ~ scenario) +
+  labs(x = "Standardized median easting (X)",
+       y = "Road mortality",
+       color = "Age class",
+       fill = "Age class") +
+  scale_y_continuous(limits = c(0, 0.25),
+                     breaks = c(0.00, 0.05, 0.10, 0.15, 0.20, 0.25)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        strip.background = element_rect(fill = "grey90"),
+        strip.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12)); xEffect
+
+ggsave("figures/combXEffect.jpeg", width = 24.0, height = 18.0, units = c("cm"), dpi = 600)
+
+# # separately
+# X_FL <- predFL %>% 
+#   ggplot(., aes(x = xmed, y = mean)) +
+#   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+#   geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+#   labs(title = "Females",
+#        x = "Standardized median easting (X)",
+#        y = "Road mortality (lowest)",
+#        color = "Age class",
+#        fill = "Age class") +
+#   theme_bw() +
+#   theme(panel.grid.minor = element_blank(),
+#         strip.background = element_rect(fill = "grey90"),
+#         title = element_text(size = 16),
+#         axis.title.x = element_blank(),
+#         axis.title = element_text(size = 14),
+#         axis.text  = element_text(size = 12)); X_FL
+# 
+# X_ML <- predML %>% 
+#   ggplot(., aes(x = xmed, y = mean)) +
+#   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+#   geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+#   labs(title = "Males",
+#        x = "Standardized median easting (X)",
+#        y = "Road mortality (lowest)",
+#        color = "Age class",
+#        fill = "Age class") +
+#   theme_bw() +
+#   theme(axis.title.x = element_blank(),
+#         axis.title.y = element_blank(),
+#         title = element_text(size = 16),
+#         axis.title = element_text(size = 14),
+#         axis.text  = element_text(size = 12),
+#         panel.grid.minor = element_blank(),
+#         strip.background = element_rect(fill = "grey90")); X_ML
+# 
+# X_FH <- predFH %>% 
+#   ggplot(., aes(x = xmed, y = mean)) +
+#   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+#   geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+#   labs(x = "Standardized median easting (X)",
+#        y = "Road mortality (highest)",
+#        color = "Age class",
+#        fill = "Age class") +
+#   theme_bw() +
+#   theme(axis.title = element_text(size = 14),
+#         axis.text  = element_text(size = 12),
+#         panel.grid.minor = element_blank(),
+#         strip.background = element_rect(fill = "grey90")); X_FH
+# 
+# X_MH <- predMH %>% 
+#   ggplot(., aes(x = xmed, y = mean)) +
+#   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+#   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+#   labs(x = "Standardized median easting (X)",
+#        y = "Road mortality (highest)",
+#        color = "Age class",
+#        fill = "Age class") +
+#   theme_bw() +
+#   theme(axis.title.y = element_blank(),
+#         axis.title = element_text(size = 14),
+#         axis.text  = element_text(size = 12),,
+#         legend.title = element_text(size = 14),
+#         legend.text  = element_text(size = 12),
+#         panel.grid.minor = element_blank(),
+#         strip.background = element_rect(fill = "grey90")); X_MH
+# 
+# library(patchwork)
+# (X_FL + X_ML) / (X_FH + X_MH)
 
 
 ## FEMALES vs MALES ------------------------------------------------------------
@@ -474,6 +673,118 @@ comb_M <- meansM %>%
 # combine
 comb_F / comb_M
 # ggsave("figures/modF_PHI&RK_lowRK_wVR&X.jpeg", width = 12.0, height = 24.0, units = c("cm"), dpi = 600)
+
+
+## Time series -----------------------------------------------------------------
+
+# roadkill vs year
+RKt_FL <- summFL %>% 
+  filter(param %in% c("mean.RK")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+  scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
+  labs(x = "Year", y = "Road mortality (lowest)", colour = "Age class", fill = "Age class") +
+  ylim(0, 1) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        title = element_text(size = 16),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12),
+        strip.background = element_rect(fill = "grey90", colour = NA)); RKt_FL
+
+RKt_FH <- summFH %>% 
+  filter(param %in% c("mean.RK")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
+  labs(x = "Year", y = "Road mortality (highest)", colour = "Age class", fill = "Age class") +
+  ylim(0, 1) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        title = element_text(size = 16),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12),
+        strip.background = element_rect(fill = "grey90", colour = NA)); RKt_FH
+
+RKt_ML <- summML %>% 
+  filter(param %in% c("mean.RK")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+  scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
+  labs(x = "Year", y = "Road mortality (lowest)", colour = "Age class", fill = "Age class") +
+  ylim(0, 1) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        title = element_text(size = 16),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12),
+        strip.background = element_rect(fill = "grey90", colour = NA)); RKt_ML
+
+RKt_MH <- summMH %>% 
+  filter(param %in% c("mean.RK")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
+  labs(x = "Year", y = "Road mortality (highest)", colour = "Age class", fill = "Age class") +
+  ylim(0, 1) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        title = element_text(size = 16),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12),
+        strip.background = element_rect(fill = "grey90", colour = NA)); RKt_MH
+
+# survival vs year
+PHIt_FL <- summFL %>% 
+  filter(param %in% c("mean.phi")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+  scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
+  labs(x = "Year", y = "Survival", colour = "Age class", fill = "Age class") +
+  ylim(0, 1) +
+  theme_bw() +
+  theme(title = element_text(size = 16),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12),
+        strip.background = element_rect(fill = "grey90", colour = NA)); PHIt_FL
+
+PHIt_ML <- summML %>% 
+  filter(param %in% c("mean.phi")) %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
+  scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
+  labs(x = "Year", y = "Survival", colour = "Age class", fill = "Age class") +
+  ylim(0, 1) +
+  theme_bw() +
+  theme(title = element_text(size = 16),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12),
+        strip.background = element_rect(fill = "grey90", colour = NA)); PHIt_ML
+
+library(patchwork)
+RKt_FL / RKt_FH / PHIt_FL
+# ggsave("figures/modF_combTimeSeries.jpeg", width = 20.0, height = 28.0, units = c("cm"), dpi = 600)
+
+RKt_ML / RKt_MH / PHIt_ML
+# ggsave("figures/modM_combTimeSeries.jpeg", width = 20.0, height = 28.0, units = c("cm"), dpi = 600)
 
 
 ## Original plots --------------------------------------------------------------

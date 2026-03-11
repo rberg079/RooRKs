@@ -5,13 +5,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- TRUE
+females <- FALSE
 testRun <- FALSE
 parallelRun <- TRUE
 
-# # name outputs
-# out.model <- "modelF_tObs_aVR_itX_tR_noRec_wYAFs.rds"
-# out.sum <- "modelF_tObs_aVR_itX_tR_noRec_wYAFs_sum.txt"
+# name outputs
+out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp10.rds"
+out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp10_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -294,26 +294,26 @@ myCode <- nimbleCode({
   
   # informative priors on survival
   # based on CJS models in Ecology paper
-  # females:
-  mu.phi[1] ~ dbeta(12, 12) # young-at-foot
-  mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
-  mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
-  mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
-  mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
-  mu.phi[6] ~ dbeta(20, 12) # senescent
+  # # females:
+  # mu.phi[1] ~ dbeta(12, 12) # young-at-foot
+  # mu.phi[2] ~ dbeta(20, 4)  # 1 year-old subadults
+  # mu.phi[3] ~ dbeta(20, 4)  # 2 year-old subadults
+  # mu.phi[4] ~ dbeta(20, 2)  # prime-aged adults
+  # mu.phi[5] ~ dbeta(20, 4)  # pre-senescent
+  # mu.phi[6] ~ dbeta(20, 12) # senescent
   
-  # # males:
-  # mu.phi[1] ~ dbeta(12, 16) # young-at-foot
-  # mu.phi[2] ~ dbeta(20, 6)  # 1 year-old subadults
-  # mu.phi[3] ~ dbeta(20, 6)  # 2 year-old subadults
-  # mu.phi[4] ~ dbeta(20, 4)  # prime-aged adults
-  # mu.phi[5] ~ dbeta(20, 8)  # pre-senescent
-  # mu.phi[6] ~ dbeta(20, 14) # senescent
+  # males:
+  mu.phi[1] ~ dbeta(12, 16) # young-at-foot
+  mu.phi[2] ~ dbeta(20, 6)  # 1 year-old subadults
+  mu.phi[3] ~ dbeta(20, 6)  # 2 year-old subadults
+  mu.phi[4] ~ dbeta(20, 4)  # prime-aged adults
+  mu.phi[5] ~ dbeta(20, 8)  # pre-senescent
+  mu.phi[6] ~ dbeta(20, 14) # senescent
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
-  mu.p  ~ dbeta(20, 4) # females
-  # mu.p  ~ dbeta(20, 6) # males
+  # mu.p  ~ dbeta(20, 4) # females
+  mu.p  ~ dbeta(20, 6) # males
   
   sigma.phi ~ dexp(10) # was 10, 1 helped w convergence
   sigma.R   ~ dexp(10) # was 10, 1 helped w convergence
@@ -588,18 +588,18 @@ MCMCdiag(out,
 
 ## Compare model outputs -------------------------------------------------------
 
-source('compareModels.R')
-CompareModels(postPaths = c(
-  "results/modelF_tObs_aV_tR_noRecO_wYAFs.rds",
-  "results/modelF_tObs_aV&D_tR_noRecO_wYAFs.rds",
-  "results/modelF_tObs_aVR_tR_noRecO_wYAFs.rds"
-),
-modelNames = c(
-  "modF_V",
-  "modF_V&D",
-  "modF_VR"
-),
-plotFolder = c("figures/15.envCovars"),
-returnSumData = TRUE,
-nAgeC = 6)
+# source('compareModels.R')
+# CompareModels(postPaths = c(
+#   "results/modelF_tObs_aV_tR_noRecO_wYAFs.rds",
+#   "results/modelF_tObs_aV&D_tR_noRecO_wYAFs.rds",
+#   "results/modelF_tObs_aVR_tR_noRecO_wYAFs.rds"
+# ),
+# modelNames = c(
+#   "modF_V",
+#   "modF_V&D",
+#   "modF_VR"
+# ),
+# plotFolder = c("figures/15.envCovars"),
+# returnSumData = TRUE,
+# nAgeC = 6)
 
