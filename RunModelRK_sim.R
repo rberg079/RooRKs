@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp10.rds"
-out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp10_sum.txt"
+out.model <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp50.rds"
+out.sum <- "modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp50_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -315,9 +315,9 @@ myCode <- nimbleCode({
   # mu.p  ~ dbeta(20, 4) # females
   mu.p  ~ dbeta(20, 6) # males
   
-  sigma.phi ~ dexp(10) # was 10, 1 helped w convergence
-  sigma.R   ~ dexp(10) # was 10, 1 helped w convergence
-  sigma.p   ~ dexp(10) # was 10, 1 helped w convergence
+  sigma.phi ~ dexp(50) # was 10, 1 helped w convergence
+  sigma.R   ~ dexp(50) # was 10, 1 helped w convergence
+  sigma.p   ~ dexp(50) # was 10, 1 helped w convergence
   
   tau.phi <- 1 / (sigma.phi * sigma.phi)
   tau.R   <- 1 / (sigma.R * sigma.R)
@@ -458,6 +458,7 @@ params <- c(
   "betaX.phi", "betaX.R",
   "mu.phi", "mu.R", "mu.p",
   "mean.phi", "mean.R", "mean.p",
+  "eps.phi", "eps.R", "eps.p",
   "sigma.phi", "sigma.R", "sigma.p",
   # "veg",
   "vegr"
