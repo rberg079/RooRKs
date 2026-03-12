@@ -193,35 +193,56 @@ meansML <- parseMCMC(meansML, "Males", "Low")
 meansFH <- parseMCMC(meansFH, "Females", "High")
 meansMH <- parseMCMC(meansMH, "Males", "High")
 
-# calculate means & 95% CrIs
-# # FOR AGE EFFECTS ONLY
-# results <- function(df){
-# 
-#   summary <- df %>%
-#     group_by(param, a) %>%
-#     summarise(mean = mean(value, na.rm = T),
-#               lcl = quantile(value, 0.025, na.rm = T),
-#               ucl = quantile(value, 0.975, na.rm = T),
-#               .groups = "drop") %>%
-#     mutate(ageC = factor(ageCs[a], levels = ageCs))
-# 
-#   return(summary)
-# }
-
-# FOR TIME SERIES
-results <- function(df){
+# calculate sex differences
+calculateDiffs <- function(df_F, df_M) {
   
+  # join female & male MCMC iterations
+  inner_join(df_F %>% select(iter, scenario, param, a, t, ageC, val_F = value),
+             df_M %>% select(iter, scenario, param, a, t, val_M = value),
+             by = c("iter", "scenario", "param", "a", "t")) %>%
+    # calculate difference
+    mutate(diff = val_M - val_F) %>%
+    # group by scenario & age class
+    group_by(scenario, param, a, ageC) %>%
+    summarise(mean_diff = mean(diff, na.rm = TRUE),
+              lcl_diff  = quantile(diff, 0.025, na.rm = TRUE),
+              ucl_diff  = quantile(diff, 0.975, na.rm = TRUE),
+              pd = mean(diff > 0, na.rm = TRUE), 
+              .groups = "drop")
+}
+
+diffL <- calculateDiffs(meansFL, meansML)
+diffH <- calculateDiffs(meansFH, meansMH)
+
+# calculate means & 95% CrIs
+# FOR AGE EFFECTS ONLY
+results <- function(df){
+
   summary <- df %>%
-    group_by(param, a, t) %>%
+    group_by(param, a) %>%
     summarise(mean = mean(value, na.rm = T),
               lcl = quantile(value, 0.025, na.rm = T),
               ucl = quantile(value, 0.975, na.rm = T),
               .groups = "drop") %>%
-    mutate(ageC = factor(ageCs[a], levels = ageCs),
-           year = years[t])
-  
+    mutate(ageC = factor(ageCs[a], levels = ageCs))
+
   return(summary)
 }
+
+# # FOR TIME SERIES
+# results <- function(df){
+#   
+#   summary <- df %>%
+#     group_by(param, a, t) %>%
+#     summarise(mean = mean(value, na.rm = T),
+#               lcl = quantile(value, 0.025, na.rm = T),
+#               ucl = quantile(value, 0.975, na.rm = T),
+#               .groups = "drop") %>%
+#     mutate(ageC = factor(ageCs[a], levels = ageCs),
+#            year = years[t])
+#   
+#   return(summary)
+# }
 
 summFL <- results(meansFL)
 summML <- results(meansML)
@@ -230,7 +251,7 @@ summFH <- results(meansFH)
 summMH <- results(meansMH)
 
 
-## xMed effect -----------------------------------------------------------------
+## Wrangle xMed effect ---------------------------------------------------------
 
 # randomly sample iterations & bind chains
 sampleChains <- function(mcmc_list, n = 1000){
@@ -275,7 +296,7 @@ meansML <- calculateRK(meansML)
 meansFH <- calculateRK(meansFH)
 meansMH <- calculateRK(meansMH)
 
-xGrid <- seq(-2.343521, 2.169987, length.out = 100)
+xGrid <- seq(-2.343521, 2.169987, length.out = 5)
 
 predictRK <- function(mcmc_df, xGrid, sex_label, scenario_label) {
   
@@ -340,7 +361,7 @@ xEffect <- preds %>%
         legend.title = element_text(size = 14),
         legend.text  = element_text(size = 12)); xEffect
 
-ggsave("figures/combXEffect.jpeg", width = 24.0, height = 18.0, units = c("cm"), dpi = 600)
+# ggsave("figures/combXEffect.jpeg", width = 24.0, height = 18.0, units = c("cm"), dpi = 600)
 
 # # separately
 # X_FL <- predFL %>% 
@@ -411,6 +432,169 @@ ggsave("figures/combXEffect.jpeg", width = 24.0, height = 18.0, units = c("cm"),
 # 
 # library(patchwork)
 # (X_FL + X_ML) / (X_FH + X_MH)
+
+
+## Wrangle random effects ------------------------------------------------------
+
+# NOT TESTED YET
+
+# LOW RK
+outFL <- readRDS("results/modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds")
+outML <- readRDS("results/modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1.rds")
+
+# HIGH RK
+outFH <- readRDS("results/modelF_tObs_aVR_itX_tR_noRec_wYAFs.rds")
+outMH <- readRDS("results/modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1.rds")
+
+n.occasions <- 18
+n.ageC <- 6
+
+years <- (1:n.occasions) + 2007
+ageCs <- c("0", "1", "2", "3-6", "7-9", "10+")
+
+# randomly sample iterations & bind chains
+sampleChains <- function(mcmc_list, n = 1000){
+  
+  map(mcmc_list, function(chain){
+    mat <- as.matrix(chain)
+    mat[sample(seq_len(nrow(mat)), n), , drop = F]
+  }) %>%
+    map(as.data.frame) %>% 
+    bind_rows()
+}
+
+meansFL <- sampleChains(outFL, n = 1000)
+meansML <- sampleChains(outML, n = 1000)
+
+meansFH <- sampleChains(outFH, n = 1000)
+meansMH <- sampleChains(outMH, n = 1000)
+
+extractRE <- function(mcmc_df){
+  
+  mcmc_df %>%
+    select(starts_with("eps.")) %>%
+    mutate(iter = row_number()) %>%
+    pivot_longer(-iter,
+                 names_to = "param",
+                 values_to = "value") %>%
+    mutate(effect = case_when(
+      str_detect(param, "eps.phi") ~ "phi",
+      str_detect(param, "eps.R") ~ "R",
+      str_detect(param, "eps.p") ~ "p"
+    ),
+    
+    index = str_extract_all(param, "\\d+"),
+    a = map_dbl(index, ~ ifelse(length(.x)==2, as.numeric(.x[1]), NA)),
+    t = map_dbl(index, ~ as.numeric(tail(.x,1))))
+}
+
+reFL <- extractRE(meansFL)
+reML <- extractRE(meansML)
+
+reFH <- extractRE(meansFH)
+reMH <- extractRE(meansMH)
+
+resultsRE <- function(df){
+  
+  df %>%
+    group_by(effect, a, t) %>%
+    summarise(mean = mean(value),
+              lcl = quantile(value, 0.025),
+              ucl = quantile(value, 0.975),
+              .groups = "drop")
+}
+
+summRE_FL <- resultsRE(reFL)
+summRE_ML <- resultsRE(reML)
+
+summRE_FH <- resultsRE(reFH)
+summRE_MH <- resultsRE(reMH)
+
+convertRE <- function(re_df, mu_phi){
+  
+  re_df %>%
+    filter(effect == "phi") %>%
+    mutate(phi_base = plogis(qlogis(mu_phi[a])),
+           phi_year = plogis(qlogis(mu_phi[a]) + value),
+           delta = phi_year - phi_base)
+}
+
+# identify year anomalies
+findAnomalies <- function(df){
+  
+  df %>%
+    group_by(param, sex, scenario, a) %>%
+    mutate(mean_age = mean(value, na.rm = TRUE),
+           anomaly = value - mean_age) %>%
+    ungroup()
+}
+
+meansFL <- findAnomalies(meansFL)
+meansML <- findAnomalies(meansML)
+
+meansFH <- findAnomalies(meansFH)
+meansMH <- findAnomalies(meansMH)
+
+summAnom <- function(df){
+  
+  df %>%
+    group_by(param, sex, scenario, a, t) %>%
+    summarise(mean = mean(anomaly, na.rm = TRUE),
+              lcl = quantile(anomaly, 0.025, na.rm = TRUE),
+              ucl = quantile(anomaly, 0.975, na.rm = TRUE),
+              .groups = "drop") %>%
+    mutate(ageC = factor(ageCs[a], levels = ageCs),
+           year = years[t])
+}
+
+anomFL <- summAnom(meansFL)
+anomML <- summAnom(meansML)
+
+anomFH <- summAnom(meansFH)
+anomMH <- summAnom(meansMH)
+
+library(ggplot2)
+
+phi_anomFL <- anomFL %>%
+  filter(param == "mean.phi") %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, group = ageC, fill = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  labs(y = "Survival anomaly",
+       x = "Year",
+       color = "Age class",
+       fill = "Age class") +
+  theme_bw()
+
+RK_anomFL <- anomFL %>%
+  filter(param == "mean.RK") %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, group = ageC, fill = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  labs(y = "Road mortality anomaly",
+       x = "Year",
+       color = "Age class",
+       fill = "Age class") +
+  theme_bw()
+
+phi_anomFL <- anomFL %>%
+  filter(param == "mean.phi") %>% 
+  ggplot(., aes(x = year, y = mean)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.25) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ageC) +
+  labs(y = "Survival anomaly",
+       x = "Year") +
+  theme_bw()
+
+
+
+
+
+
 
 
 ## FEMALES vs MALES ------------------------------------------------------------
