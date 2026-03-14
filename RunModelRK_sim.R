@@ -10,8 +10,8 @@ testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVR_itX_tR_noRecO_4ageCs.rds"
-out.sum <- "modelM_tObs_aVR_itX_tR_noRecO_4ageCs_sum.txt"
+out.model <- "modelM_tObs_aVR_itX_tR_noRec_4ageCs.rds"
+out.sum <- "modelM_tObs_aVR_itX_tR_noRec_4ageCs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -195,56 +195,56 @@ myCode <- nimbleCode({
       
       p[i,t]  <- mean.p[t] # observation
       
-      #### Observation matrix ####
-      # LOW ROADKILL SCENARIO:
-      # 1 - seen
-      # 2 - recovered roadkill
-      # 3 - undetected
-
-      # ALIVE
-      obs.mat[i,1,1,t] <- p[i,t]
-      obs.mat[i,1,2,t] <- 0
-      obs.mat[i,1,3,t] <- 1-p[i,t]
-
-      # NEW ROADKILL
-      obs.mat[i,2,1,t] <- 0
-      obs.mat[i,2,2,t] <- 1
-      obs.mat[i,2,3,t] <- 0
-
-      # NEW OTHER DEATH
-      obs.mat[i,3,1,t] <- 0
-      obs.mat[i,3,2,t] <- 0
-      obs.mat[i,3,3,t] <- 1
-
-      # LONG DEAD (ABSORBING)
-      obs.mat[i,4,1,t] <- 0
-      obs.mat[i,4,2,t] <- 0
-      obs.mat[i,4,3,t] <- 1
-      # assuming other deaths are not recovered
-      # but rather disappear & remain undetected
-      
       # #### Observation matrix ####
-      # # HIGH ROADKILL SCENARIO:
+      # # LOW ROADKILL SCENARIO:
       # # 1 - seen
-      # # 2 - undetected
+      # # 2 - recovered roadkill
+      # # 3 - undetected
       # 
       # # ALIVE
       # obs.mat[i,1,1,t] <- p[i,t]
-      # obs.mat[i,1,2,t] <- 1-p[i,t]
+      # obs.mat[i,1,2,t] <- 0
+      # obs.mat[i,1,3,t] <- 1-p[i,t]
       # 
       # # NEW ROADKILL
       # obs.mat[i,2,1,t] <- 0
       # obs.mat[i,2,2,t] <- 1
+      # obs.mat[i,2,3,t] <- 0
       # 
       # # NEW OTHER DEATH
       # obs.mat[i,3,1,t] <- 0
-      # obs.mat[i,3,2,t] <- 1
+      # obs.mat[i,3,2,t] <- 0
+      # obs.mat[i,3,3,t] <- 1
       # 
       # # LONG DEAD (ABSORBING)
       # obs.mat[i,4,1,t] <- 0
-      # obs.mat[i,4,2,t] <- 1
-      # # assuming no one is recovered
-      # # all rather remain undetected
+      # obs.mat[i,4,2,t] <- 0
+      # obs.mat[i,4,3,t] <- 1
+      # # assuming other deaths are not recovered
+      # # but rather disappear & remain undetected
+      
+      #### Observation matrix ####
+      # HIGH ROADKILL SCENARIO:
+      # 1 - seen
+      # 2 - undetected
+
+      # ALIVE
+      obs.mat[i,1,1,t] <- p[i,t]
+      obs.mat[i,1,2,t] <- 1-p[i,t]
+
+      # NEW ROADKILL
+      obs.mat[i,2,1,t] <- 0
+      obs.mat[i,2,2,t] <- 1
+
+      # NEW OTHER DEATH
+      obs.mat[i,3,1,t] <- 0
+      obs.mat[i,3,2,t] <- 1
+
+      # LONG DEAD (ABSORBING)
+      obs.mat[i,4,1,t] <- 0
+      obs.mat[i,4,2,t] <- 1
+      # assuming no one is recovered
+      # all rather remain undetected
       
     } # t
   } # i
@@ -388,13 +388,13 @@ ZZs <- prepZs(y, first, last, id)
 zInits <- ZZs$zInits
 zData <- ZZs$zData
 
-# # HIGH RK
-# y[y == 2] <- 2
-# y[y == 3] <- 2
-# y[y == 4] <- 2
+# HIGH RK
+y[y == 2] <- 2
+y[y == 3] <- 2
+y[y == 4] <- 2
 
-# LOW RK
-y[y == 4] <- 3
+# # LOW RK
+# y[y == 4] <- 3
 
 
 ## Assemble --------------------------------------------------------------------
