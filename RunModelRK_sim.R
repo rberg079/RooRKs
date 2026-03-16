@@ -5,13 +5,13 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- FALSE
+females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
 # name outputs
-out.model <- "modelM_tObs_aVR_itX_tR_noRec_4ageCs.rds"
-out.sum <- "modelM_tObs_aVR_itX_tR_noRec_4ageCs_sum.txt"
+out.model <- "modelF_tObs_aVR_itX_tR_noRec_4ageCs.rds"
+out.sum <- "modelF_tObs_aVR_itX_tR_noRec_4ageCs_sum.txt"
 
 # load libraries
 library(bayesplot)
@@ -283,22 +283,22 @@ myCode <- nimbleCode({
   
   # informative priors on survival
   # based on CJS models in Ecology paper
-  # # females:
-  # mu.phi[1] ~ dbeta(20, 4)  # subadults
-  # mu.phi[2] ~ dbeta(20, 2)  # prime-aged adults
-  # mu.phi[3] ~ dbeta(20, 4)  # pre-senescent
-  # mu.phi[4] ~ dbeta(20, 12) # senescent
+  # females:
+  mu.phi[1] ~ dbeta(20, 4)  # subadults
+  mu.phi[2] ~ dbeta(20, 2)  # prime-aged adults
+  mu.phi[3] ~ dbeta(20, 4)  # pre-senescent
+  mu.phi[4] ~ dbeta(20, 12) # senescent
   
-  # males:
-  mu.phi[1] ~ dbeta(20, 6)  # subadults
-  mu.phi[2] ~ dbeta(20, 4)  # prime-aged adults
-  mu.phi[3] ~ dbeta(20, 8)  # pre-senescent
-  mu.phi[4] ~ dbeta(20, 14) # senescent
+  # # males:
+  # mu.phi[1] ~ dbeta(20, 6)  # subadults
+  # mu.phi[2] ~ dbeta(20, 4)  # prime-aged adults
+  # mu.phi[3] ~ dbeta(20, 8)  # pre-senescent
+  # mu.phi[4] ~ dbeta(20, 14) # senescent
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
-  # mu.p  ~ dbeta(20, 4) # females
-  mu.p  ~ dbeta(20, 6) # males
+  mu.p  ~ dbeta(20, 4) # females
+  # mu.p  ~ dbeta(20, 6) # males
   
   sigma.phi ~ dexp(1)  # was 10, 1 helped w convergence
   sigma.R   ~ dexp(1)  # was 10, 1 helped w convergence
@@ -464,7 +464,7 @@ if(testRun){
   nthin   <- 1             # thinning
   nchains <- 3             # chains
 }else{
-  nburn   <- 70000         # burn-in
+  nburn   <- 90000         # burn-in
   niter   <- 10000 + nburn # iterations
   nthin   <- 1             # thinning
   nchains <- 3             # chains
