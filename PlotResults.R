@@ -12,18 +12,18 @@ library(scales)
 library(tidyverse)
 
 # LOW RK
-outFL <- readRDS("results/modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds")
-outML <- readRDS("results/modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1.rds")
+outFL <- readRDS("results/modelF_tObs_aVR_itX_tR_noRecO_4ageCs.rds")
+outML <- readRDS("results/modelM_tObs_aVR_itX_tR_noRecO_4ageCs.rds")
 
 # HIGH RK
-outFH <- readRDS("results/modelF_tObs_aVR_itX_tR_noRec_wYAFs.rds")
-outMH <- readRDS("results/modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1.rds")
+outFH <- readRDS("results/modelF_tObs_aVR_itX_tR_noRec_4ageCs.rds")
+outMH <- readRDS("results/modelM_tObs_aVR_itX_tR_noRec_4ageCs.rds")
 
 n.occasions <- 18
-n.ageC <- 6
+n.ageC <- 4
 
 years <- (1:n.occasions) + 2007
-ageCs <- c("0", "1", "2", "3-6", "7-9", "10+")
+ageCs <- c("1-2", "3-6", "7-9", "10+")
 
 # # CHECK raw data
 # # for who was RKed when
@@ -214,35 +214,35 @@ calculateDiffs <- function(df_F, df_M) {
 diffL <- calculateDiffs(meansFL, meansML)
 diffH <- calculateDiffs(meansFH, meansMH)
 
-# calculate means & 95% CrIs
-# FOR AGE EFFECTS ONLY
-results <- function(df){
-
-  summary <- df %>%
-    group_by(param, a) %>%
-    summarise(mean = mean(value, na.rm = T),
-              lcl = quantile(value, 0.025, na.rm = T),
-              ucl = quantile(value, 0.975, na.rm = T),
-              .groups = "drop") %>%
-    mutate(ageC = factor(ageCs[a], levels = ageCs))
-
-  return(summary)
-}
-
-# # FOR TIME SERIES
+# # calculate means & 95% CrIs
+# # FOR AGE EFFECTS ONLY
 # results <- function(df){
-#   
+# 
 #   summary <- df %>%
-#     group_by(param, a, t) %>%
+#     group_by(param, a) %>%
 #     summarise(mean = mean(value, na.rm = T),
 #               lcl = quantile(value, 0.025, na.rm = T),
 #               ucl = quantile(value, 0.975, na.rm = T),
 #               .groups = "drop") %>%
-#     mutate(ageC = factor(ageCs[a], levels = ageCs),
-#            year = years[t])
-#   
+#     mutate(ageC = factor(ageCs[a], levels = ageCs))
+# 
 #   return(summary)
 # }
+
+# FOR TIME SERIES
+results <- function(df){
+
+  summary <- df %>%
+    group_by(param, a, t) %>%
+    summarise(mean = mean(value, na.rm = T),
+              lcl = quantile(value, 0.025, na.rm = T),
+              ucl = quantile(value, 0.975, na.rm = T),
+              .groups = "drop") %>%
+    mutate(ageC = factor(ageCs[a], levels = ageCs),
+           year = years[t])
+
+  return(summary)
+}
 
 summFL <- results(meansFL)
 summML <- results(meansML)
@@ -434,169 +434,6 @@ xEffect <- preds %>%
 # (X_FL + X_ML) / (X_FH + X_MH)
 
 
-## Wrangle random effects ------------------------------------------------------
-
-# NOT TESTED YET
-
-# LOW RK
-outFL <- readRDS("results/modelF_tObs_aVR_itX_tR_noRecO_wYAFs.rds")
-outML <- readRDS("results/modelM_tObs_aVR_itX_tR_noRecO_wYAFs_dexp1.rds")
-
-# HIGH RK
-outFH <- readRDS("results/modelF_tObs_aVR_itX_tR_noRec_wYAFs.rds")
-outMH <- readRDS("results/modelM_tObs_aVR_itX_tR_noRec_wYAFs_dexp1.rds")
-
-n.occasions <- 18
-n.ageC <- 6
-
-years <- (1:n.occasions) + 2007
-ageCs <- c("0", "1", "2", "3-6", "7-9", "10+")
-
-# randomly sample iterations & bind chains
-sampleChains <- function(mcmc_list, n = 1000){
-  
-  map(mcmc_list, function(chain){
-    mat <- as.matrix(chain)
-    mat[sample(seq_len(nrow(mat)), n), , drop = F]
-  }) %>%
-    map(as.data.frame) %>% 
-    bind_rows()
-}
-
-meansFL <- sampleChains(outFL, n = 1000)
-meansML <- sampleChains(outML, n = 1000)
-
-meansFH <- sampleChains(outFH, n = 1000)
-meansMH <- sampleChains(outMH, n = 1000)
-
-extractRE <- function(mcmc_df){
-  
-  mcmc_df %>%
-    select(starts_with("eps.")) %>%
-    mutate(iter = row_number()) %>%
-    pivot_longer(-iter,
-                 names_to = "param",
-                 values_to = "value") %>%
-    mutate(effect = case_when(
-      str_detect(param, "eps.phi") ~ "phi",
-      str_detect(param, "eps.R") ~ "R",
-      str_detect(param, "eps.p") ~ "p"
-    ),
-    
-    index = str_extract_all(param, "\\d+"),
-    a = map_dbl(index, ~ ifelse(length(.x)==2, as.numeric(.x[1]), NA)),
-    t = map_dbl(index, ~ as.numeric(tail(.x,1))))
-}
-
-reFL <- extractRE(meansFL)
-reML <- extractRE(meansML)
-
-reFH <- extractRE(meansFH)
-reMH <- extractRE(meansMH)
-
-resultsRE <- function(df){
-  
-  df %>%
-    group_by(effect, a, t) %>%
-    summarise(mean = mean(value),
-              lcl = quantile(value, 0.025),
-              ucl = quantile(value, 0.975),
-              .groups = "drop")
-}
-
-summRE_FL <- resultsRE(reFL)
-summRE_ML <- resultsRE(reML)
-
-summRE_FH <- resultsRE(reFH)
-summRE_MH <- resultsRE(reMH)
-
-convertRE <- function(re_df, mu_phi){
-  
-  re_df %>%
-    filter(effect == "phi") %>%
-    mutate(phi_base = plogis(qlogis(mu_phi[a])),
-           phi_year = plogis(qlogis(mu_phi[a]) + value),
-           delta = phi_year - phi_base)
-}
-
-# identify year anomalies
-findAnomalies <- function(df){
-  
-  df %>%
-    group_by(param, sex, scenario, a) %>%
-    mutate(mean_age = mean(value, na.rm = TRUE),
-           anomaly = value - mean_age) %>%
-    ungroup()
-}
-
-meansFL <- findAnomalies(meansFL)
-meansML <- findAnomalies(meansML)
-
-meansFH <- findAnomalies(meansFH)
-meansMH <- findAnomalies(meansMH)
-
-summAnom <- function(df){
-  
-  df %>%
-    group_by(param, sex, scenario, a, t) %>%
-    summarise(mean = mean(anomaly, na.rm = TRUE),
-              lcl = quantile(anomaly, 0.025, na.rm = TRUE),
-              ucl = quantile(anomaly, 0.975, na.rm = TRUE),
-              .groups = "drop") %>%
-    mutate(ageC = factor(ageCs[a], levels = ageCs),
-           year = years[t])
-}
-
-anomFL <- summAnom(meansFL)
-anomML <- summAnom(meansML)
-
-anomFH <- summAnom(meansFH)
-anomMH <- summAnom(meansMH)
-
-library(ggplot2)
-
-phi_anomFL <- anomFL %>%
-  filter(param == "mean.phi") %>% 
-  ggplot(., aes(x = year, y = mean)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl, group = ageC, fill = ageC), alpha = 0.2) +
-  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
-  labs(y = "Survival anomaly",
-       x = "Year",
-       color = "Age class",
-       fill = "Age class") +
-  theme_bw()
-
-RK_anomFL <- anomFL %>%
-  filter(param == "mean.RK") %>% 
-  ggplot(., aes(x = year, y = mean)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl, group = ageC, fill = ageC), alpha = 0.2) +
-  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
-  labs(y = "Road mortality anomaly",
-       x = "Year",
-       color = "Age class",
-       fill = "Age class") +
-  theme_bw()
-
-phi_anomFL <- anomFL %>%
-  filter(param == "mean.phi") %>% 
-  ggplot(., aes(x = year, y = mean)) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl), alpha = 0.25) +
-  geom_line(linewidth = 1) +
-  facet_wrap(~ageC) +
-  labs(y = "Survival anomaly",
-       x = "Year") +
-  theme_bw()
-
-
-
-
-
-
-
-
 ## FEMALES vs MALES ------------------------------------------------------------
 
 # join females & males
@@ -617,7 +454,7 @@ colours_fill <- c(blues, pinks)
 
 # plot
 PHI_L <- meansL %>% 
-  filter(param == "mu.phi") %>% 
+  filter(param == "mean.phi") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = sex_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
                position = position_dodge(width = 0.6)) +
@@ -635,7 +472,7 @@ PHI_L <- meansL %>%
         legend.text  = element_text(size = 12)); PHI_L
 
 PHI_H <- meansH %>% 
-  filter(param == "mu.phi") %>% 
+  filter(param == "mean.phi") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = sex_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
                position = position_dodge(width = 0.6)) +
@@ -653,7 +490,7 @@ PHI_H <- meansH %>%
         legend.text  = element_text(size = 12)); PHI_H
 
 RK_L <- meansL %>% 
-  filter(param == "mu.RK") %>% 
+  filter(param == "mean.RK") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = sex_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
                position = position_dodge(width = 0.6)) +
@@ -671,7 +508,7 @@ RK_L <- meansL %>%
         legend.text  = element_text(size = 12)); RK_L
 
 RK_H <- meansH %>% 
-  filter(param == "mu.RK") %>% 
+  filter(param == "mean.RK") %>% 
   ggplot(aes(x = value, y = ageC)) +
   stat_halfeye(aes(fill = sex_age), .width = c(0.5, 0.95), alpha = 0.6, colour = NA,
                position = position_dodge(width = 0.6)) +
@@ -693,7 +530,7 @@ RK_L + PHI_L + plot_layout(widths = c(0.4, 0.6))
 # ggsave("figures/F&M_PHI&RK_lowRK.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
 
 RK_H + PHI_H + plot_layout(widths = c(0.4, 0.6))
-# ggsave("figures/F&M_PHI&RK_lowRK.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
+# ggsave("figures/F&M_PHI&RK_highRK.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
 
 (RK_L + PHI_L + plot_layout(widths = c(0.4, 0.6)))/(RK_H + PHI_H + plot_layout(widths = c(0.4, 0.6)))
 # ggsave("figures/F&M_PHI&RK_LOWvsHIGH.jpeg", width = 20.0, height = 28.0, units = c("cm"), dpi = 600)
@@ -800,7 +637,7 @@ RK_M + PHI_M + plot_layout(widths = c(0.4, 0.6))
 # ggsave("figures/F_PHI&RK_LOWvsHIGH.jpeg", width = 24.0, height = 20.0, units = c("cm"), dpi = 600)
 
 (RK_F + PHI_F + plot_layout(widths = c(0.4, 0.6)))/(RK_M + PHI_M + plot_layout(widths = c(0.4, 0.6)))
-ggsave("figures/F&M_PHI&RK_LOWvsHIGH.jpeg", width = 20.0, height = 28.0, units = c("cm"), dpi = 600)
+# ggsave("figures/F&M_PHI&RK_LOWvsHIGH.jpeg", width = 20.0, height = 24.0, units = c("cm"), dpi = 600)
 
 
 ## Combined PHI & RK -----------------------------------------------------------
@@ -868,7 +705,7 @@ RKt_FL <- summFL %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
   scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
-  labs(x = "Year", y = "Road mortality (lowest)", colour = "Age class", fill = "Age class") +
+  labs(title = "Females", x = "Year", y = "Road mortality (lowest)", colour = "Age class", fill = "Age class") +
   ylim(0, 1) +
   theme_bw() +
   theme(axis.title.x = element_blank(),
@@ -882,8 +719,8 @@ RKt_FL <- summFL %>%
 RKt_FH <- summFH %>% 
   filter(param %in% c("mean.RK")) %>% 
   ggplot(., aes(x = year, y = mean)) +
-  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
-  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
   scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
   labs(x = "Year", y = "Road mortality (highest)", colour = "Age class", fill = "Age class") +
   ylim(0, 1) +
@@ -902,10 +739,11 @@ RKt_ML <- summML %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
   scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
-  labs(x = "Year", y = "Road mortality (lowest)", colour = "Age class", fill = "Age class") +
+  labs(title = "Males", x = "Year", colour = "Age class", fill = "Age class") +
   ylim(0, 1) +
   theme_bw() +
   theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
         title = element_text(size = 16),
         axis.title = element_text(size = 14),
         axis.text  = element_text(size = 12),
@@ -919,10 +757,11 @@ RKt_MH <- summMH %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
   scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
-  labs(x = "Year", y = "Road mortality (highest)", colour = "Age class", fill = "Age class") +
+  labs(x = "Year", colour = "Age class", fill = "Age class") +
   ylim(0, 1) +
   theme_bw() +
   theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
         title = element_text(size = 16),
         axis.title = element_text(size = 14),
         axis.text  = element_text(size = 12),
@@ -953,10 +792,11 @@ PHIt_ML <- summML %>%
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2, show.legend = F) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1, show.legend = F) +
   scale_x_continuous(breaks = c(2008, 2012, 2016, 2020, 2024)) +
-  labs(x = "Year", y = "Survival", colour = "Age class", fill = "Age class") +
+  labs(x = "Year", colour = "Age class", fill = "Age class") +
   ylim(0, 1) +
   theme_bw() +
   theme(title = element_text(size = 16),
+        axis.title.y = element_blank(),
         axis.title = element_text(size = 14),
         axis.text  = element_text(size = 12),
         legend.title = element_text(size = 14),
@@ -969,6 +809,9 @@ RKt_FL / RKt_FH / PHIt_FL
 
 RKt_ML / RKt_MH / PHIt_ML
 # ggsave("figures/modM_combTimeSeries.jpeg", width = 20.0, height = 28.0, units = c("cm"), dpi = 600)
+
+(RKt_FL + RKt_ML) / (RKt_FH + RKt_MH) / (PHIt_FL + PHIt_ML)
+# ggsave("figures/F&M_combTimeSeries.jpeg", width = 20.0, height = 24.0, units = c("cm"), dpi = 600)
 
 
 ## Original plots --------------------------------------------------------------
