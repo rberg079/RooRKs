@@ -5,7 +5,7 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- TRUE
+females <- FALSE
 testRun <- FALSE
 parallelRun <- TRUE
 
@@ -297,7 +297,7 @@ myCode <- nimbleCode({
   
   # Pi known to be extremely high &
   # to vary little from Ecology paper
-  mu.p  ~ dbeta(20, 4) # females
+  mu.p  ~ dbeta(40, 2) # females
   # mu.p  ~ dbeta(20, 6) # males
   
   sigma.phi ~ dexp(1)  # was 10, 1 helped w convergence
@@ -464,7 +464,7 @@ if(testRun){
   nthin   <- 1             # thinning
   nchains <- 3             # chains
 }else{
-  nburn   <- 90000         # burn-in
+  nburn   <- 70000         # burn-in
   niter   <- 10000 + nburn # iterations
   nthin   <- 1             # thinning
   nchains <- 3             # chains
