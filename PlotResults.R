@@ -251,6 +251,123 @@ summFH <- results(meansFH)
 summMH <- results(meansMH)
 
 
+## Wrangle vegr effect ---------------------------------------------------------
+
+# randomly sample iterations & bind chains
+sampleChains <- function(mcmc_list, n = 1000){
+  
+  map(mcmc_list, function(chain){
+    mat <- as.matrix(chain)
+    mat[sample(seq_len(nrow(mat)), n), , drop = F]
+  }) %>%
+    map(as.data.frame) %>% 
+    bind_rows()
+}
+
+meansFL <- sampleChains(outFL, n = 1000)
+meansML <- sampleChains(outML, n = 1000)
+
+meansFH <- sampleChains(outFH, n = 1000)
+meansMH <- sampleChains(outMH, n = 1000)
+
+# calculate probability of being roadkilled
+calculateRK <- function(mcmc_df){
+  
+  # identify phi & R columns
+  phi_cols <- grep("^mean.phi\\[", colnames(mcmc_df))
+  R_cols   <- sub("mean.phi", "mean.R", colnames(mcmc_df)[phi_cols])
+  R_cols   <- match(R_cols, colnames(mcmc_df))
+  
+  # compute probabilities
+  mean_die <- 1 - mcmc_df[, phi_cols]
+  mean_RK <- mean_die * mcmc_df[, R_cols]
+  
+  # name columns & bind to original df
+  colnames(mean_die) <- sub("mean.phi", "mean.die", colnames(mean_die))
+  colnames(mean_RK)  <- sub("mean.phi", "mean.RK", colnames(mean_RK))
+  mcmc_df <- cbind(mcmc_df, mean_die, mean_RK)
+  
+  return(mcmc_df)
+}
+
+meansFL <- calculateRK(meansFL)
+meansML <- calculateRK(meansML)
+
+meansFH <- calculateRK(meansFH)
+meansMH <- calculateRK(meansMH)
+
+vGrid <- seq(-2.343521, 2.169987, length.out = 50)
+
+predictVR <- function(mcmc_df, vGrid, sex_label, scenario_label) {
+  
+  preds <- list()
+  
+  for(a in 1:n.ageC){
+    
+    betaVR_phi <- mcmc_df[[paste0("betaVR.phi[", a, "]")]]
+    betaVR_R   <- mcmc_df[[paste0("betaVR.R[", a, "]")]]
+    
+    phi_cols <- grep(paste0("^mean\\.phi\\[", a, ", "), colnames(mcmc_df), value = TRUE)
+    R_cols   <- grep(paste0("^mean\\.R\\[",   a, ", "), colnames(mcmc_df), value = TRUE)
+    
+    base_phi <- as.matrix(mcmc_df[, phi_cols])
+    base_R   <- as.matrix(mcmc_df[, R_cols])
+    
+    for(v in vGrid) {
+      phi_mat  <- plogis(qlogis(base_phi) + betaVR_phi * v)
+      R_mat    <- plogis(qlogis(base_R) + betaVR_R * v)
+      PHI_iter <- rowMeans(phi_mat)
+      
+      preds[[length(preds) + 1]] <- data.frame(
+        ageC = factor(ageCs[a], levels = ageCs),
+        vegr = v,
+        mean = mean(PHI_iter),
+        lcl  = quantile(PHI_iter, 0.025),
+        ucl  = quantile(PHI_iter, 0.975),
+        scenario = scenario_label,
+        sex = sex_label
+      )
+    }
+  }
+  return(do.call(rbind, preds))
+}
+
+# generate predictions
+predFL <- predictVR(meansFL, vGrid, "Females", "Low")
+predML <- predictVR(meansML, vGrid, "Males",   "Low")
+
+predFH <- predictVR(meansFH, vGrid, "Females", "High")
+predMH <- predictVR(meansMH, vGrid, "Males",   "High")
+
+preds <- bind_rows(predFL, predML, predFH, predMH)
+preds$scenario <- factor(preds$scenario, levels = c("Low", "High"))
+
+library(ggtext)
+
+# plot
+vEffect <- preds %>% 
+  ggplot(., aes(x = vegr, y = mean)) +
+  geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
+  geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
+  facet_grid(sex ~ scenario) +
+  labs(x = "Standardized available forage *per capita*",
+       y = "Survival",
+       color = "Age class",
+       fill = "Age class") +
+  scale_y_continuous(limits = c(0, 1)) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(),
+        strip.background = element_rect(fill = "grey90"),
+        strip.text = element_text(size = 14),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        axis.title.x = element_markdown(),
+        legend.title = element_text(size = 14),
+        legend.text  = element_text(size = 12)); vEffect
+
+# ggsave("figures/combVREffect.jpeg", width = 24.0, height = 18.0, units = c("cm"), dpi = 600)
+
+
 ## Wrangle xMed effect ---------------------------------------------------------
 
 # randomly sample iterations & bind chains
@@ -313,7 +430,7 @@ predictRK <- function(mcmc_df, xGrid, sex_label, scenario_label) {
     
     for(x in xGrid) {
       phi_mat <- plogis(qlogis(base_phi) + betaX_phi * x)
-      R_mat   <- plogis(qlogis(base_phi) + betaX_phi * x)
+      R_mat   <- plogis(qlogis(base_R) + betaX_R * x)
       RK_iter <- rowMeans((1 - phi_mat) * R_mat)
       
       preds[[length(preds) + 1]] <- data.frame(
@@ -350,8 +467,8 @@ xEffect <- preds %>%
        y = "Road mortality",
        color = "Age class",
        fill = "Age class") +
-  scale_y_continuous(limits = c(0, 0.25),
-                     breaks = c(0.00, 0.05, 0.10, 0.15, 0.20, 0.25)) +
+  # scale_y_continuous(limits = c(0, 0.25),
+  #                    breaks = c(0.00, 0.05, 0.10, 0.15, 0.20, 0.25)) +
   theme_bw() +
   theme(panel.grid.minor = element_blank(),
         strip.background = element_rect(fill = "grey90"),

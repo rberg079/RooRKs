@@ -5,7 +5,7 @@
 ## Set up ----------------------------------------------------------------------
 
 # set toggles
-females <- FALSE
+females <- TRUE
 testRun <- FALSE
 parallelRun <- TRUE
 
