@@ -6,6 +6,7 @@
 
 # load libraries
 library(ggdist)
+library(ggtext)
 library(patchwork)
 library(readxl)
 library(scales)
@@ -296,7 +297,7 @@ meansML <- calculateRK(meansML)
 meansFH <- calculateRK(meansFH)
 meansMH <- calculateRK(meansMH)
 
-vGrid <- seq(-2.343521, 2.169987, length.out = 50)
+vGrid <- seq(-2.343521, 2.169987, length.out = 100)
 
 predictVR <- function(mcmc_df, vGrid, sex_label, scenario_label) {
   
@@ -342,14 +343,12 @@ predMH <- predictVR(meansMH, vGrid, "Males",   "High")
 preds <- bind_rows(predFL, predML, predFH, predMH)
 preds$scenario <- factor(preds$scenario, levels = c("Low", "High"))
 
-library(ggtext)
-
 # plot
 vEffect <- preds %>% 
   ggplot(., aes(x = vegr, y = mean)) +
   geom_ribbon(aes(ymin = lcl, ymax = ucl, fill = ageC, group = ageC), alpha = 0.2) +
   geom_line(aes(colour = ageC, group = ageC), linewidth = 1) +
-  facet_grid(sex ~ scenario) +
+  facet_grid(~sex) +
   labs(x = "Standardized available forage *per capita*",
        y = "Survival",
        color = "Age class",
@@ -365,7 +364,7 @@ vEffect <- preds %>%
         legend.title = element_text(size = 14),
         legend.text  = element_text(size = 12)); vEffect
 
-# ggsave("figures/combVREffect.jpeg", width = 24.0, height = 18.0, units = c("cm"), dpi = 600)
+# ggsave("figures/combVREffect.jpeg", width = 24.0, height = 10.0, units = c("cm"), dpi = 600)
 
 
 ## Wrangle xMed effect ---------------------------------------------------------
@@ -413,7 +412,7 @@ meansML <- calculateRK(meansML)
 meansFH <- calculateRK(meansFH)
 meansMH <- calculateRK(meansMH)
 
-xGrid <- seq(-2.343521, 2.169987, length.out = 5)
+xGrid <- seq(-2.343521, 2.169987, length.out = 2)
 
 predictRK <- function(mcmc_df, xGrid, sex_label, scenario_label) {
   
